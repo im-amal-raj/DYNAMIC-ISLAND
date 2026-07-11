@@ -269,6 +269,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     
+    let power_ui_handle = ui_handle.clone();
+    ui.on_power_action(move |action| {
+        let cmd = match action.as_str() {
+            "lock" => "loginctl lock-session || hyprlock || swaylock || swaylock-fancy || slock",
+            "suspend" => "systemctl suspend",
+            "reboot" => "systemctl reboot",
+            "poweroff" => "systemctl poweroff",
+            _ => "",
+        };
+        if !cmd.is_empty() {
+            let _ = std::process::Command::new("sh").arg("-c").arg(cmd).spawn();
+        }
+        if let Some(ui) = power_ui_handle.upgrade() {
+            ui.set_active_section(IslandSection::Compact);
+        }
+    });
+    
     let clear_notifs_ui_handle = ui_handle.clone();
     ui.on_clear_notif_history(move || {
         if let Ok(mut cache) = backend::notifications::NOTIFS_CACHE.lock() {

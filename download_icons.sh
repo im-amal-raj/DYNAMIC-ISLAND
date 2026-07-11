@@ -16,6 +16,10 @@ icon_map=(
     ["calendar"]="calendar"
     ["grid"]="layout-grid"
     ["more-horizontal"]="ellipsis"
+    ["lock"]="lock"
+    ["moon"]="moon"
+    ["rotate-cw"]="rotate-cw"
+    ["power"]="power"
 )
 
 echo "Downloading Lucide icons..."

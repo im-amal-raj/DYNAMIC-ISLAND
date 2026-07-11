@@ -124,7 +124,7 @@ export component UltimateDynamicIsland inherits Window {
             root.target-height = 375px;
         } else if (active-section == IslandSection.SysMonitor) {
             root.target-width = 380px;
-            root.target-height = 230px;
+            root.target-height = 340px;
         }
     }
     
@@ -139,25 +139,20 @@ export component UltimateDynamicIsland inherits Window {
     no-frame: true;
     
     property <angle> art-rotation: 0deg;
-    in-out property <bool> show-navigation-dock: false;
-    property <bool> is-mouse-near-bottom: global_ta.has-hover && global_ta.mouse-y > root.target-height - 50px;
-    property <bool> is-mouse-outside-dock: !global_ta.has-hover || global_ta.mouse-y < root.target-height - 90px;
-    
-    changed is-mouse-near-bottom => {
-        if (root.is-mouse-near-bottom) {
-            root.show-navigation-dock = true;
-        }
-    }
-    changed is-mouse-outside-dock => {
-        if (root.is-mouse-outside-dock) {
-            root.show-navigation-dock = false;
-        }
-    }
     Timer {
         interval: 16ms;
         running: root.is-playing;
         triggered => {
             root.art-rotation += 1deg;
+        }
+    }
+    
+    property <float> warning-pulse: 0.0;
+    Timer {
+        interval: 30ms;
+        running: Math.max(root.cpu-usage, root.memory-usage) > 0.8;
+        triggered => {
+            root.warning-pulse = Math.mod(root.warning-pulse + 0.15, 6.28318);
         }
     }
     
@@ -172,6 +167,10 @@ export component UltimateDynamicIsland inherits Window {
     in property <[AppItem]> app-results: [];
     in property <float> cpu-usage: 0.0;
     in property <float> memory-usage: 0.0;
+    in property <string> net-down-speed: "0.0 KB/s";
+    in property <string> net-up-speed: "0.0 KB/s";
+    in property <string> gpu-name: "Intel/AMD Graphics";
+    in property <float> gpu-usage: 0.0;
     
     in property <[TaskItem]> active-tasks: [];
     in property <[CalendarDay]> calendar-days-grid: [];
@@ -233,6 +232,7 @@ export component UltimateDynamicIsland inherits Window {
     callback clear-notif-history();
     callback search-apps(string);
     callback launch-app(string);
+    callback power-action(string);
     
     callback toggle-task-completion(int);
     callback reschedule-task(int, string);
@@ -343,23 +343,31 @@ export component UltimateDynamicIsland inherits Window {
                                 Rectangle {
                                     width: 16px; height: 16px;
                                     
-                                    // Base CPU Chip Outline
+                                    // Base Resource Icon (CPU Chip or RAM stick depending on load)
                                     Path {
                                         width: 16px; height: 16px;
-                                        stroke: max-usage > 0.8 ? Theme.accent-error : (max-usage > 0.5 ? Theme.accent-warning : Theme.accent-success);
-                                        stroke-width: 1.5px;
-                                        commands: "M 3 3 L 13 3 L 13 13 L 3 13 Z M 5 1 L 5 3 M 8 1 L 8 3 M 11 1 L 11 3 M 15 5 L 13 5 M 15 8 L 13 8 M 15 11 L 13 11 M 5 15 L 5 13 M 8 15 L 8 13 M 11 15 L 11 13 M 1 5 L 3 5 M 1 8 L 3 8 M 1 11 L 3 11";
-                                        
+                                        property <bool> is-cpu-higher: root.cpu-usage >= root.memory-usage;
                                         property <float> max-usage: Math.max(root.cpu-usage, root.memory-usage);
+                                        
+                                        stroke: self.max-usage > 0.8 ? Theme.accent-error : (self.max-usage > 0.5 ? Theme.accent-warning : (self.is-cpu-higher ? Theme.accent-success : Theme.accent-info));
+                                        stroke-width: 1.5px;
+                                        commands: self.is-cpu-higher ? 
+                                            "M 3 3 L 13 3 L 13 13 L 3 13 Z M 5 1 L 5 3 M 8 1 L 8 3 M 11 1 L 11 3 M 15 5 L 13 5 M 15 8 L 13 8 M 15 11 L 13 11 M 5 15 L 5 13 M 8 15 L 8 13 M 11 15 L 11 13 M 1 5 L 3 5 M 1 8 L 3 8 M 1 11 L 3 11" : 
+                                            "M 2 5 L 14 5 L 14 11 L 2 11 Z M 4 7 L 6 7 L 6 9 L 4 9 Z M 8 7 L 10 7 L 10 9 L 8 9 Z M 3 11 L 3 12 M 5 11 L 5 12 M 7 11 L 7 12 M 9 11 L 9 12 M 11 11 L 11 12 M 13 11 L 13 12";
+                                        
                                         animate stroke { duration: 200ms; }
                                     }
                                     
                                     // Pulsing Inner Core
                                     Rectangle {
-                                        x: 6px; y: 6px;
-                                        width: 4px; height: 4px;
-                                        background: Math.max(root.cpu-usage, root.memory-usage) > 0.8 ? Theme.accent-error : Theme.accent-success;
-                                        border-radius: 1px;
+                                        property <bool> is-high: Math.max(root.cpu-usage, root.memory-usage) > 0.8;
+                                        property <bool> is-cpu-higher: root.cpu-usage >= root.memory-usage;
+                                        width: self.is-high ? (4px + 3px * Math.sin(root.warning-pulse * 1rad)) : 4px;
+                                        height: self.width;
+                                        x: (16px - self.width) / 2;
+                                        y: (16px - self.height) / 2;
+                                        background: self.is-high ? Theme.accent-error : (self.is-cpu-higher ? Theme.accent-success : Theme.accent-info);
+                                        border-radius: self.width / 2;
                                         
                                         // Pulse animation
                                         opacity: 0.3 + 0.7 * Math.max(root.cpu-usage, root.memory-usage);
@@ -479,54 +487,104 @@ export component UltimateDynamicIsland inherits Window {
             padding-top: 15px; padding-bottom: 48px;
             spacing: 12px;
 
-            // Album Art + Title / Artist stacked
+            // Album Art + Title / Artist stacked + Sound Visualizer
             HorizontalBox {
                 padding: 0px;
                 spacing: 16px;
-                alignment: start;
+                alignment: space-between;
                 
-                // Rounded Album Art Card
-                Rectangle {
-                    width: 60px; height: 60px;
-                    border-radius: 12px;
-                    background: rgba(255, 255, 255, 0.05);
-                    border-width: 1px;
-                    border-color: rgba(255, 255, 255, 0.1);
-                    clip: true;
+                HorizontalLayout {
+                    spacing: 16px;
+                    alignment: start;
                     
-                    if root.has-album-art : Image {
-                        width: 100%; height: 100%;
-                        source: root.album-art;
-                        image-fit: cover;
+                    // Rounded Album Art Card
+                    Rectangle {
+                        width: 60px; height: 60px;
+                        border-radius: 12px;
+                        background: rgba(255, 255, 255, 0.05);
+                        border-width: 1px;
+                        border-color: rgba(255, 255, 255, 0.1);
+                        clip: true;
+                        
+                        if root.has-album-art : Image {
+                            width: 100%; height: 100%;
+                            source: root.album-art;
+                            image-fit: cover;
+                        }
+                        if !root.has-album-art : Image {
+                            width: 24px; height: 24px;
+                            source: @image-url("../assets/music_fallback.svg");
+                            image-fit: contain;
+                            colorize: Theme.accent-primary;
+                            x: 18px; y: 18px;
+                        }
                     }
-                    if !root.has-album-art : Image {
-                        width: 24px; height: 24px;
-                        source: @image-url("../assets/music_fallback.svg");
-                        image-fit: contain;
-                        colorize: Theme.accent-primary;
-                        x: 18px; y: 18px;
+                    
+                    // Track Metadata Stack
+                    VerticalBox {
+                        alignment: center;
+                        padding: 0px;
+                        spacing: 4px;
+                        width: 160px;
+                        
+                        Text { 
+                            text: root.track-title; 
+                            color: #ffffff; 
+                            font-weight: 700; 
+                            font-size: 14px; 
+                            overflow: elide; 
+                        }
+                        Text { 
+                            text: root.track-artist; 
+                            color: rgba(255, 255, 255, 0.5); 
+                            font-weight: 500; 
+                            font-size: 11px; 
+                            overflow: elide; 
+                        }
                     }
                 }
                 
-                // Track Metadata Stack
-                VerticalBox {
-                    alignment: center;
-                    padding: 0px;
-                    spacing: 4px;
+                // Sound Visualizer (5-bar equalizer wave animation)
+                HorizontalLayout {
+                    spacing: 3px;
+                    alignment: end;
+                    height: 20px;
+                    y: (60px - self.height) / 2;
                     
-                    Text { 
-                        text: root.track-title; 
-                        color: #ffffff; 
-                        font-weight: 700; 
-                        font-size: 14px; 
-                        overflow: elide; 
+                    Rectangle { 
+                        width: 3px; 
+                        height: root.is-playing ? (6px + 10px * Math.sin(root.art-rotation * 4)) : 6px; 
+                        background: Theme.accent-primary; 
+                        border-radius: 1.5px;
+                        y: parent.height - self.height;
                     }
-                    Text { 
-                        text: root.track-artist; 
-                        color: rgba(255, 255, 255, 0.5); 
-                        font-weight: 500; 
-                        font-size: 11px; 
-                        overflow: elide; 
+                    Rectangle { 
+                        width: 3px; 
+                        height: root.is-playing ? (4px + 14px * Math.sin(root.art-rotation * 6 + 45deg)) : 8px; 
+                        background: Theme.accent-primary; 
+                        border-radius: 1.5px;
+                        y: parent.height - self.height;
+                    }
+                    Rectangle { 
+                        width: 3px; 
+                        height: root.is-playing ? (8px + 11px * Math.sin(root.art-rotation * 3 - 30deg)) : 5px; 
+                        background: Theme.accent-primary; 
+                        border-radius: 1.5px;
+                        y: parent.height - self.height;
+                    }
+                    Rectangle { 
+                        width: 3px; 
+                        height: root.is-playing ? (5px + 13px * Math.sin(root.art-rotation * 5 + 90deg)) : 7px; 
+                        background: Theme.accent-primary; 
+                        border-radius: 1.5px;
+                        y: parent.height - self.height;
+                    }
+                    Rectangle { 
+                        width: 3px; 
+                        height: root.is-playing ? (7px + 9px * Math.sin(root.art-rotation * 2.5 + 60deg)) : 6px; 
+                        background: Theme.accent-primary; 
+                        border-radius: 1.5px;
+                        y: parent.height - self.height;
                     }
                 }
             }
@@ -1403,6 +1461,92 @@ export component UltimateDynamicIsland inherits Window {
                     }
                 }
             }
+
+            // GPU Stats Card
+            Rectangle {
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.06);
+                
+                VerticalBox {
+                    padding: 10px;
+                    spacing: 6px;
+                    
+                    HorizontalBox {
+                        padding: 0px;
+                        alignment: space-between;
+                        Text { text: "Active GPU (" + root.gpu-name + ")"; font-size: 11px; font-weight: 700; color: #ffffff; overflow: elide; width: 280px; }
+                        Text { text: Math.round(root.gpu-usage * 100) + "%"; font-size: 11px; font-weight: 700; color: root.gpu-usage > 0.8 ? Theme.accent-error : Theme.accent-success; }
+                    }
+                    
+                    // Progress Bar
+                    Rectangle {
+                        height: 5px;
+                        background: rgba(255, 255, 255, 0.1);
+                        border-radius: 2.5px;
+                        
+                        Rectangle {
+                            x: 0px;
+                            width: parent.width * root.gpu-usage;
+                            height: 100%;
+                            background: root.gpu-usage > 0.8 ? Theme.accent-error : Theme.accent-success;
+                            border-radius: 2.5px;
+                            animate width { duration: 250ms; }
+                        }
+                    }
+                }
+            }
+
+            // Network Traffic Card
+            Rectangle {
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.06);
+                
+                VerticalBox {
+                    padding: 10px;
+                    spacing: 6px;
+                    
+                    HorizontalBox {
+                        padding: 0px;
+                        alignment: space-between;
+                        Text { text: "Network Bandwidth Speed"; font-size: 11px; font-weight: 700; color: #ffffff; }
+                        
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: end;
+                            
+                            HorizontalLayout {
+                                spacing: 3px;
+                                alignment: start;
+                                Path {
+                                    width: 10px; height: 10px;
+                                    stroke: Theme.accent-success;
+                                    stroke-width: 1px;
+                                    commands: "M 5 2 L 5 8 M 3 6 L 5 8 L 7 6";
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                Text { text: root.net-down-speed; font-size: 10px; font-weight: 700; color: Theme.accent-success; vertical-alignment: center; }
+                            }
+                            
+                            HorizontalLayout {
+                                spacing: 3px;
+                                alignment: start;
+                                Path {
+                                    width: 10px; height: 10px;
+                                    stroke: Theme.accent-info;
+                                    stroke-width: 1px;
+                                    commands: "M 5 8 L 5 2 M 3 4 L 5 2 L 7 4";
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                Text { text: root.net-up-speed; font-size: 10px; font-weight: 700; color: Theme.accent-info; vertical-alignment: center; }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if root.active-section == IslandSection.SysControls : VerticalBox {
@@ -1789,7 +1933,90 @@ export component UltimateDynamicIsland inherits Window {
             
             HorizontalBox {
                 alignment: space-between;
-                Text { text: "SYSTEM TRAY"; color: #30d158; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+                Text { text: "SYSTEM TRAY"; color: #ff375f; font-size: 10px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+                
+                // Power Actions Group
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+                    
+                    // 1. Lock Button (Info Blue)
+                    TouchArea {
+                        width: 24px; height: 24px;
+                        clicked => { root.power-action("lock"); }
+                        Rectangle {
+                            width: 24px; height: 24px;
+                            border-radius: 12px;
+                            background: rgba(10, 132, 255, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(10, 132, 255, 0.2);
+                            
+                            Image {
+                                width: 14px; height: 14px;
+                                source: @image-url("../assets/icons/lock.svg");
+                                colorize: Theme.accent-info;
+                                x: 5px; y: 5px;
+                            }
+                        }
+                    }
+                    // 2. Suspend Button (Warning Orange)
+                    TouchArea {
+                        width: 24px; height: 24px;
+                        clicked => { root.power-action("suspend"); }
+                        Rectangle {
+                            width: 24px; height: 24px;
+                            border-radius: 12px;
+                            background: rgba(255, 159, 10, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(255, 159, 10, 0.2);
+                            
+                            Image {
+                                width: 14px; height: 14px;
+                                source: @image-url("../assets/icons/moon.svg");
+                                colorize: Theme.accent-warning;
+                                x: 5px; y: 5px;
+                            }
+                        }
+                    }
+                    // 3. Reboot Button (Success Green)
+                    TouchArea {
+                        width: 24px; height: 24px;
+                        clicked => { root.power-action("reboot"); }
+                        Rectangle {
+                            width: 24px; height: 24px;
+                            border-radius: 12px;
+                            background: rgba(48, 209, 88, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(48, 209, 88, 0.2);
+                            
+                            Image {
+                                width: 14px; height: 14px;
+                                source: @image-url("../assets/icons/rotate-cw.svg");
+                                colorize: Theme.accent-success;
+                                x: 5px; y: 5px;
+                            }
+                        }
+                    }
+                    // 4. Power Off Button (Error Red)
+                    TouchArea {
+                        width: 24px; height: 24px;
+                        clicked => { root.power-action("poweroff"); }
+                        Rectangle {
+                            width: 24px; height: 24px;
+                            border-radius: 12px;
+                            background: rgba(255, 59, 48, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(255, 59, 48, 0.2);
+                            
+                            Image {
+                                width: 14px; height: 14px;
+                                source: @image-url("../assets/icons/power.svg");
+                                colorize: Theme.accent-error;
+                                x: 5px; y: 5px;
+                            }
+                        }
+                    }
+                }
             }
             
             ScrollView {
@@ -1822,27 +2049,32 @@ export component UltimateDynamicIsland inherits Window {
         }
         
         // Navigation Dock
-        if root.active-section != IslandSection.Compact && root.active-section != IslandSection.Notification : Rectangle {
+        if root.active-section != IslandSection.Compact && root.active-section != IslandSection.Notification : dock_wrapper := TouchArea {
             width: 260px;
-            height: root.show-navigation-dock ? 34px : 6px;
-            background: rgba(10, 10, 12, 0.92);
-            border-radius: self.height / 2;
-            border-width: 1px;
-            border-color: rgba(255, 255, 255, 0.08);
-            y: parent.height - self.height - 8px;
+            height: 38px;
             x: (parent.width - self.width) / 2;
-            clip: true;
+            y: parent.height - self.height - 4px;
             
-            animate height { duration: 180ms; easing: cubic-bezier(0.16, 1, 0.3, 1); }
-            animate border-radius { duration: 180ms; easing: cubic-bezier(0.16, 1, 0.3, 1); }
-            
-            HorizontalBox {
-                padding-left: 8px; padding-right: 8px;
-                padding-top: 5px; padding-bottom: 5px;
-                alignment: space-around;
-                spacing: 8px;
-                opacity: root.show-navigation-dock ? 1.0 : 0.0;
-                animate opacity { duration: 120ms; }
+            Rectangle {
+                width: 100%;
+                height: dock_wrapper.has-hover ? 34px : 6px;
+                background: rgba(10, 10, 12, 0.92);
+                border-radius: self.height / 2;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.08);
+                y: parent.height - self.height;
+                clip: true;
+                
+                animate height { duration: 180ms; easing: cubic-bezier(0.16, 1, 0.3, 1); }
+                animate border-radius { duration: 180ms; easing: cubic-bezier(0.16, 1, 0.3, 1); }
+                
+                HorizontalBox {
+                    padding-left: 8px; padding-right: 8px;
+                    padding-top: 5px; padding-bottom: 5px;
+                    alignment: space-around;
+                    spacing: 8px;
+                    opacity: dock_wrapper.has-hover ? 1.0 : 0.0;
+                    animate opacity { duration: 120ms; }
                 
                 // 1. Media (Accent: Primary/Purple)
                 TouchArea {
@@ -1929,5 +2161,6 @@ export component UltimateDynamicIsland inherits Window {
                 }
             }
         }
+    }
     }
 }

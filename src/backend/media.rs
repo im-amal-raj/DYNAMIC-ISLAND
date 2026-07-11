@@ -1,27 +1,42 @@
 use slint::{SharedString, ComponentHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
 use crate::UltimateDynamicIsland;
 use log::{info, warn};
 
 pub fn setup_media(ui: &UltimateDynamicIsland) {
-    ui.on_media_action(|action| {
-        let arg = match action.as_str() {
-            "previous" => "previous",
-            "play-pause" => "play-pause",
-            "next" => "next",
-            _ => "",
-        };
-        if !arg.is_empty() {
-            let _ = std::process::Command::new("playerctl").arg(arg).spawn();
+    let last_interaction = Arc::new(Mutex::new(None));
+    let last_interaction_clone = last_interaction.clone();
+    
+    ui.on_media_action(move |action| {
+        if let Ok(mut guard) = last_interaction_clone.lock() {
+            *guard = Some(Instant::now());
         }
+        
+        let action_str = action.to_string();
+        tokio::spawn(async move {
+            if let Ok(finder) = mpris::PlayerFinder::new() {
+                if let Ok(players) = finder.find_all() {
+                    if let Some(player) = players.into_iter().next() {
+                        let _ = match action_str.as_str() {
+                            "play-pause" => player.play_pause(),
+                            "next" => player.next(),
+                            "previous" => player.previous(),
+                            _ => Ok(()),
+                        };
+                    }
+                }
+            }
+        });
     });
 
     let mpris_ui_handle = ui.as_weak();
+    let last_interaction_thread = last_interaction.clone();
     tokio::spawn(async move {
         let mut last_art_url = String::new();
         
         loop {
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_millis(250)).await;
             
             let mut extracted = None;
             let mut play_info = None;
@@ -171,13 +186,25 @@ pub fn setup_media(ui: &UltimateDynamicIsland) {
                     last_art_url = String::new();
                 }
 
+                let skip_is_playing_update = if let Ok(guard) = last_interaction_thread.lock() {
+                    if let Some(time) = *guard {
+                        time.elapsed() < Duration::from_millis(1200)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
                 let _ = slint::invoke_from_event_loop({
                     let ui_handle = mpris_ui_handle.clone();
                     move || {
                         if let Some(ui) = ui_handle.upgrade() {
                             ui.set_track_title(SharedString::from(title));
                             ui.set_track_artist(SharedString::from(artist));
-                            ui.set_is_playing(is_playing);
+                            if !skip_is_playing_update {
+                                ui.set_is_playing(is_playing);
+                            }
                             
                             if url_changed {
                                 if let Some(rgba) = loaded_image {
