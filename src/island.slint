@@ -1,0 +1,1933 @@
+import { HorizontalBox, VerticalBox, ListView, ScrollView, Slider, LineEdit } from "std-widgets.slint";
+import { Theme } from "ui/theme.slint";
+import { IslandPill } from "ui/components/island_pill.slint";
+import { AnimatedIcon } from "ui/components/animated_icon.slint";
+
+export enum IslandSection {
+    Compact,
+    Media,
+    Clipboard,
+    Notification,
+    SysControls,
+    AppLauncher,
+    SystemTray,
+    NotificationHistory,
+    TodoManager,
+    CalendarView,
+    SysMonitor
+}
+
+export struct TaskItem {
+    id: int,
+    title: string,
+    due_date_str: string,
+    due_time_str: string,
+    is_completed: bool,
+}
+
+export struct CalendarDay {
+    text: string,
+    has_event: bool,
+}
+
+export struct WifiNetwork {
+    ssid: string,
+    signal: int,
+    connected: bool,
+}
+
+export struct BluetoothDevice {
+    name: string,
+    mac: string,
+    connected: bool,
+}
+
+export struct AudioDevice {
+    id: string,
+    name: string,
+    is_default: bool,
+}
+
+export struct ClipItem {
+    id: string,
+    text: string,
+    has_image: bool,
+    image_data: image,
+}
+
+export struct NotifItem {
+    id: string,
+    app_name: string,
+    summary: string,
+    body: string,
+    has_icon: bool,
+    icon: image,
+}
+
+export struct AppItem {
+    id: string,
+    name: string,
+    exec_cmd: string,
+    has_icon: bool,
+    icon: image,
+}
+
+export component UltimateDynamicIsland inherits Window {
+    // Canvas dimensions mapping
+    in-out property <IslandSection> active-section: IslandSection.Compact;
+    in-out property <length> target-width: 220px;
+    in-out property <length> target-height: 42px;
+    in-out property <bool> right-pill-hovered: false;
+    in-out property <bool> in-date-picker-mode: false;
+    
+    changed is-playing => {
+        if (active-section == IslandSection.Compact) {
+            root.target-width = root.is-playing ? (root.right-pill-hovered ? 400px : 256px) : 220px;
+        }
+    }
+    changed right-pill-hovered => {
+        if (active-section == IslandSection.Compact) {
+            root.target-width = root.is-playing ? (root.right-pill-hovered ? 400px : 256px) : 220px;
+        }
+    }
+    
+    changed active-section => {
+        if (active-section == IslandSection.Compact) {
+            root.target-width = root.is-playing ? (root.right-pill-hovered ? 400px : 256px) : 220px;
+            root.target-height = 42px;
+        } else if (active-section == IslandSection.Media) {
+            root.target-width = 380px;
+            root.target-height = 210px;
+        } else if (active-section == IslandSection.Clipboard) {
+            root.target-width = 380px;
+            root.target-height = 275px;
+        } else if (active-section == IslandSection.Notification) {
+            root.target-width = 380px;
+            root.target-height = 110px;
+        } else if (active-section == IslandSection.SysControls) {
+            root.target-width = 380px;
+            root.target-height = 260px;
+        } else if (active-section == IslandSection.AppLauncher) {
+            root.target-width = 380px;
+            root.target-height = 275px;
+        } else if (active-section == IslandSection.SystemTray) {
+            root.target-width = 380px;
+            root.target-height = 155px;
+        } else if (active-section == IslandSection.NotificationHistory) {
+            root.target-width = 380px;
+            root.target-height = 275px;
+        } else if (active-section == IslandSection.TodoManager) {
+            root.target-width = 420px;
+            root.target-height = 335px;
+        } else if (active-section == IslandSection.CalendarView) {
+            root.target-width = 380px;
+            root.target-height = 375px;
+        } else if (active-section == IslandSection.SysMonitor) {
+            root.target-width = 380px;
+            root.target-height = 230px;
+        }
+    }
+    
+    property <length> animated-width: target-width;
+    property <length> animated-height: target-height;
+    animate animated-width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+    animate animated-height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+    
+    width: animated-width;
+    height: animated-height;
+    background: transparent;
+    no-frame: true;
+    
+    property <angle> art-rotation: 0deg;
+    in-out property <bool> show-navigation-dock: false;
+    property <bool> is-mouse-near-bottom: global_ta.has-hover && global_ta.mouse-y > root.target-height - 50px;
+    property <bool> is-mouse-outside-dock: !global_ta.has-hover || global_ta.mouse-y < root.target-height - 90px;
+    
+    changed is-mouse-near-bottom => {
+        if (root.is-mouse-near-bottom) {
+            root.show-navigation-dock = true;
+        }
+    }
+    changed is-mouse-outside-dock => {
+        if (root.is-mouse-outside-dock) {
+            root.show-navigation-dock = false;
+        }
+    }
+    Timer {
+        interval: 16ms;
+        running: root.is-playing;
+        triggered => {
+            root.art-rotation += 1deg;
+        }
+    }
+    
+    // Core Engine Bindings (Injected directly by Rust threads)
+    in property <string> track-title: "No Media Active";
+    in property <string> track-artist: "Unknown Artist";
+    in property <image> album-art;
+    in property <bool> has-album-art: false;
+    in-out property <bool> is-playing: false;
+    in property <[ClipItem]> clipboard-history: [];
+    in property <[NotifItem]> notif-history: [];
+    in property <[AppItem]> app-results: [];
+    in property <float> cpu-usage: 0.0;
+    in property <float> memory-usage: 0.0;
+    
+    in property <[TaskItem]> active-tasks: [];
+    in property <[CalendarDay]> calendar-days-grid: [];
+    in property <string> current-month-year-label: "July 2026";
+    in property <string> current-time-string: "Jul 7 Tue • 20:26";
+    in-out property <string> selected-date-filter: "";
+    
+    // Notification Engine Bindings
+    in property <string> notif-app-name: "";
+    in property <string> notif-summary: "";
+    in property <string> notif-body: "";
+    in property <bool> has-notif-icon: false;
+    in property <image> notif-icon;
+    
+    // Live Activity / Privacy Contexts
+    in property <bool> camera-active: false;
+    in property <bool> mic-active: false;
+    in property <bool> has-new-notification: false;
+    in property <image> peek-notif-icon;
+    in property <string> peek-notif-summary: "";
+    
+    // System Status Bindings
+    in property <[AppItem]> system-tray-apps: [];
+    in property <[WifiNetwork]> wifi-networks: [];
+    in property <[BluetoothDevice]> bluetooth-devices: [];
+    in-out property <string> active-connectivity-tab: "wifi";
+    in property <bool> wifi-enabled: false;
+    in property <bool> bluetooth-enabled: false;
+    in property <string> ethernet-name: "";
+    in property <float> volume-level: 50.0;
+    in property <float> mic-level: 50.0;
+    in property <float> brightness-level: 50.0;
+    
+    in-out property <string> active-mixer-tab: "output";
+    in property <[AudioDevice]> audio-sinks: [];
+    in property <[AudioDevice]> audio-sources: [];
+    
+    // Callbacks to pass UI actions straight down to C/Rust speed loops
+    callback change-volume(bool);
+    callback set-volume(float);
+    callback set-mic-volume(float);
+    callback set-brightness(float);
+    callback set-default-audio(string); // passed the node ID
+    callback connect-wifi(string, string);
+    callback disconnect-wifi();
+    callback scan-wifi();
+    callback toggle-wifi(bool);
+    callback scan-bluetooth();
+    callback toggle-bluetooth(bool);
+    callback connect-bluetooth(string);
+    callback disconnect-bluetooth(string);
+    
+    callback activate-tray-item(string);
+    callback dispatch-app-launcher(string);
+    callback media-action(string);
+    callback paste-clip(string);
+    callback cycle-tab(int);
+    callback clear-clipboard();
+    callback clear-notif-history();
+    callback search-apps(string);
+    callback launch-app(string);
+    
+    callback toggle-task-completion(int);
+    callback reschedule-task(int, string);
+    callback filter-tasks-by-date(string);
+    callback play-alert-sound();
+    
+    callback add-task(string, string);
+    callback clear-completed-tasks();
+    callback change-month-offset(int);
+    title: "dynamic-island";
+
+    IslandPill {
+        width: root.target-width;
+        height: root.target-height;
+        background: root.is-playing && root.active-section == IslandSection.Compact ? transparent : Theme.glass-gradient;
+        border-color: root.is-playing && root.active-section == IslandSection.Compact ? transparent : Theme.border-gradient;
+        border-width: root.is-playing && root.active-section == IslandSection.Compact ? 0px : 1px;
+
+        // Global Interaction Layer
+        global_ta := TouchArea {
+            width: 100%; height: 100%;
+            
+            // Swipe right to open Media
+            moved => {
+                if (root.active-section == IslandSection.Compact && self.mouse-x - self.pressed-x > 40px) {
+                    root.active-section = IslandSection.Media;
+                    root.target-width = 380px;
+                    root.target-height = 145px;
+                }
+                // Swipe left to open Clipboard
+                if (root.active-section == IslandSection.Compact && self.pressed-x - self.mouse-x > 40px) {
+                    root.active-section = IslandSection.Clipboard;
+                    root.target-width = 380px;
+                    root.target-height = 240px;
+                }
+                // Swipe down to open AppLauncher
+                if (root.active-section == IslandSection.Compact && self.mouse-y - self.pressed-y > 30px) {
+                    root.active-section = IslandSection.AppLauncher;
+                    root.target-width = 380px;
+                    root.target-height = 240px;
+                }
+                // Swipe up to open NotificationHistory
+                if (root.active-section == IslandSection.Compact && self.pressed-y - self.mouse-y > 30px) {
+                    root.active-section = IslandSection.NotificationHistory;
+                    root.target-width = 380px;
+                    root.target-height = 240px;
+                }
+                
+                // Horizontal swipes on expanded views to cycle tabs
+                if (root.active-section != IslandSection.Compact && root.active-section != IslandSection.Media && root.active-section != IslandSection.Notification) {
+                    if (self.mouse-x - self.pressed-x > 50px) {
+                        root.cycle-tab(-1);
+                    }
+                    if (self.pressed-x - self.mouse-x > 50px) {
+                        root.cycle-tab(1);
+                    }
+                }
+            }
+            
+            // Click to close if expanded
+            clicked => {
+                if (root.active-section == IslandSection.Compact) {
+                    root.active-section = IslandSection.TodoManager;
+                    root.target-width = 420px;
+                    root.target-height = 280px;
+                } else if (root.active-section != IslandSection.Compact) {
+                    root.active-section = IslandSection.Compact;
+                    root.target-width = 220px;
+                    root.target-height = 42px;
+                }
+            }
+        }
+
+        // Visual Layout Matrices
+        if root.active-section == IslandSection.Compact : HorizontalLayout {
+            alignment: center;
+            spacing: root.is-playing ? 10px : 0px;
+            
+            // Left Pill (Time/Date & CPU/Memory status)
+            Rectangle {
+                width: root.is-playing ? (parent.width - (root.right-pill-hovered ? 190px : 46px)) : parent.width;
+                height: parent.height;
+                background: Theme.glass-gradient;
+                border-color: Theme.border-gradient;
+                border-width: 1px;
+                border-radius: self.height / 2;
+                
+                animate width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+                
+                HorizontalBox {
+                    alignment: center;
+                    spacing: 8px;
+                    
+                    if !root.has-new-notification : HorizontalLayout {
+                        spacing: 8px;
+                        alignment: center;
+                        
+                        // Interactive CPU chip touch/hover zone
+                        cpu_ta := TouchArea {
+                            width: 24px;
+                            height: 24px;
+                            clicked => {
+                                root.active-section = IslandSection.SysMonitor;
+                            }
+                            
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 16px; height: 16px;
+                                    
+                                    // Base CPU Chip Outline
+                                    Path {
+                                        width: 16px; height: 16px;
+                                        stroke: max-usage > 0.8 ? Theme.accent-error : (max-usage > 0.5 ? Theme.accent-warning : Theme.accent-success);
+                                        stroke-width: 1.5px;
+                                        commands: "M 3 3 L 13 3 L 13 13 L 3 13 Z M 5 1 L 5 3 M 8 1 L 8 3 M 11 1 L 11 3 M 15 5 L 13 5 M 15 8 L 13 8 M 15 11 L 13 11 M 5 15 L 5 13 M 8 15 L 8 13 M 11 15 L 11 13 M 1 5 L 3 5 M 1 8 L 3 8 M 1 11 L 3 11";
+                                        
+                                        property <float> max-usage: Math.max(root.cpu-usage, root.memory-usage);
+                                        animate stroke { duration: 200ms; }
+                                    }
+                                    
+                                    // Pulsing Inner Core
+                                    Rectangle {
+                                        x: 6px; y: 6px;
+                                        width: 4px; height: 4px;
+                                        background: Math.max(root.cpu-usage, root.memory-usage) > 0.8 ? Theme.accent-error : Theme.accent-success;
+                                        border-radius: 1px;
+                                        
+                                        // Pulse animation
+                                        opacity: 0.3 + 0.7 * Math.max(root.cpu-usage, root.memory-usage);
+                                        animate opacity { duration: 300ms; }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Divider Line
+                        Rectangle {
+                            width: 1px;
+                            height: 10px;
+                            background: rgba(255, 255, 255, 0.15);
+                            y: (parent.height - self.height) / 2;
+                        }
+                        
+                        // Clock / Stats Text (Transitions on hover)
+                        Text { 
+                            text: cpu_ta.has-hover ? 
+                                ("CPU: " + Math.round(root.cpu-usage * 100) + "%  |  RAM: " + Math.round(root.memory-usage * 100) + "%") : 
+                                root.current-time-string; 
+                            color: cpu_ta.has-hover ? Theme.accent-info : #ffffff;
+                            font-size: 10px; font-weight: 700;
+                            vertical-alignment: center;
+                            
+                            animate color { duration: 150ms; }
+                        }
+                    }
+                    
+                    if root.has-new-notification : HorizontalBox {
+                        spacing: 6px;
+                        alignment: center;
+                        Image {
+                            width: 16px; height: 16px;
+                            source: root.peek-notif-icon;
+                        }
+                        Text {
+                            text: root.peek-notif-summary;
+                            color: Theme.accent-primary; font-size: 11px; font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+            
+            // Right Pill (Detached Circle containing spinning art)
+            if root.is-playing : Rectangle {
+                width: root.right-pill-hovered ? 180px : 36px;
+                height: 36px;
+                background: Theme.glass-gradient;
+                border-color: Theme.border-gradient;
+                border-width: 1px;
+                border-radius: 18px;
+                clip: true;
+                
+                animate width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+                
+                ta_right_pill := TouchArea {
+                    width: 100%; height: 100%;
+                    clicked => {
+                        root.active-section = IslandSection.Media;
+                    }
+                }
+                
+                // Track hover status
+                property <bool> is-hovered: ta_right_pill.has-hover;
+                changed is-hovered => {
+                    root.right-pill-hovered = self.is-hovered;
+                }
+                
+                HorizontalLayout {
+                    alignment: start;
+                    padding-left: 5px;
+                    spacing: 8px;
+                    
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 26px; height: 26px; border-radius: 13px;
+                            background: rgba(255, 255, 255, 0.05);
+                            clip: true;
+                            
+                            if root.has-album-art : Image {
+                                width: 36px; height: 36px;
+                                x: -5px; y: -5px;
+                                source: root.album-art;
+                                image-fit: cover;
+                                transform-rotation: root.art-rotation;
+                            }
+                            if !root.has-album-art : Image {
+                                width: 14px; height: 14px;
+                                source: @image-url("../assets/music_fallback.svg");
+                                image-fit: contain;
+                                colorize: #cba6f7;
+                                x: 6px; y: 6px;
+                            }
+                        }
+                    }
+                    
+                    if root.right-pill-hovered : VerticalLayout {
+                        alignment: center;
+                        Text {
+                            text: root.track-title;
+                            color: Theme.accent-primary; font-size: 11px; font-weight: 700;
+                            overflow: elide;
+                            width: 135px;
+                        }
+                    }
+                }
+            }
+        }
+
+        if root.active-section == IslandSection.Media : VerticalBox {
+            alignment: center;
+            padding-left: 20px; padding-right: 20px;
+            padding-top: 15px; padding-bottom: 48px;
+            spacing: 12px;
+
+            // Album Art + Title / Artist stacked
+            HorizontalBox {
+                padding: 0px;
+                spacing: 16px;
+                alignment: start;
+                
+                // Rounded Album Art Card
+                Rectangle {
+                    width: 60px; height: 60px;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: rgba(255, 255, 255, 0.1);
+                    clip: true;
+                    
+                    if root.has-album-art : Image {
+                        width: 100%; height: 100%;
+                        source: root.album-art;
+                        image-fit: cover;
+                    }
+                    if !root.has-album-art : Image {
+                        width: 24px; height: 24px;
+                        source: @image-url("../assets/music_fallback.svg");
+                        image-fit: contain;
+                        colorize: Theme.accent-primary;
+                        x: 18px; y: 18px;
+                    }
+                }
+                
+                // Track Metadata Stack
+                VerticalBox {
+                    alignment: center;
+                    padding: 0px;
+                    spacing: 4px;
+                    
+                    Text { 
+                        text: root.track-title; 
+                        color: #ffffff; 
+                        font-weight: 700; 
+                        font-size: 14px; 
+                        overflow: elide; 
+                    }
+                    Text { 
+                        text: root.track-artist; 
+                        color: rgba(255, 255, 255, 0.5); 
+                        font-weight: 500; 
+                        font-size: 11px; 
+                        overflow: elide; 
+                    }
+                }
+            }
+
+            // Progress Timeline Slider (Simulated visual scrubber)
+            VerticalBox {
+                padding: 0px;
+                spacing: 4px;
+                
+                Rectangle {
+                    height: 4px;
+                    background: rgba(255, 255, 255, 0.15);
+                    border-radius: 2px;
+                    
+                    // Active track line (simulate 35% playback position)
+                    Rectangle {
+                        x: 0px;
+                        width: parent.width * 0.35;
+                        height: 100%;
+                        background: Theme.accent-primary;
+                        border-radius: 2px;
+                    }
+                }
+                
+                HorizontalBox {
+                    padding: 0px;
+                    alignment: space-between;
+                    Text { text: "1:24"; font-size: 9px; color: rgba(255, 255, 255, 0.4); }
+                    Text { text: "-2:48"; font-size: 9px; color: rgba(255, 255, 255, 0.4); }
+                }
+            }
+
+            // Playback controls row
+            HorizontalLayout {
+                alignment: center;
+                spacing: 40px;
+                
+                VerticalLayout {
+                    alignment: center;
+                    AnimatedIcon {
+                        icon-size: 16px;
+                        commands: "M 12 0 L 2 6 L 12 12 Z M 2 0 L 0 0 L 0 12 L 2 12 Z";
+                        clicked => { root.media-action("previous"); }
+                    }
+                }
+                
+                VerticalLayout {
+                    alignment: center;
+                    ta_play_pause := TouchArea {
+                        width: 44px; height: 44px;
+                        property <float> current-scale: self.pressed ? 0.88 : (self.has-hover ? 1.05 : 1.0);
+                        animate current-scale { duration: 150ms; easing: Theme.fade-easing; }
+                        clicked => { root.media-action("play-pause"); root.is-playing = !root.is-playing; }
+                        
+                        Rectangle {
+                            width: 44px * ta_play_pause.current-scale; 
+                            height: 44px * ta_play_pause.current-scale;
+                            border-radius: self.width / 2;
+                            background: rgba(255, 255, 255, 0.1);
+                            border-width: 1px;
+                            border-color: rgba(255, 255, 255, 0.2);
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            
+                            if root.is-playing : HorizontalLayout {
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                width: 12px; height: 14px;
+                                spacing: 4px;
+                                Rectangle { width: 4px; height: 14px; background: #ffffff; border-radius: 1px; }
+                                Rectangle { width: 4px; height: 14px; background: #ffffff; border-radius: 1px; }
+                            }
+                            if !root.is-playing : Path {
+                                x: (parent.width - self.width) / 2 + 1.5px;
+                                y: (parent.height - self.height) / 2;
+                                width: 12px; height: 14px;
+                                viewbox-width: 12; viewbox-height: 14;
+                                fill: #ffffff;
+                                commands: "M 0 0 L 12 7 L 0 14 Z";
+                            }
+                        }
+                    }
+                }
+                
+                VerticalLayout {
+                    alignment: center;
+                    AnimatedIcon {
+                        icon-size: 16px;
+                        commands: "M 0 0 L 10 6 L 0 12 Z M 10 0 L 12 0 L 12 12 L 10 12 Z";
+                        clicked => { root.media-action("next"); }
+                    }
+                }
+            }
+        }
+
+        if root.active-section == IslandSection.Clipboard : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 12px;
+            
+            HorizontalBox {
+                alignment: space-between;
+                Text { text: "CLIPBOARD HISTORY"; color: rgba(255, 255, 255, 0.4); font-size: 10px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+                
+                Rectangle {
+                    width: 55px; height: 20px;
+                    border-radius: 6px;
+                    background: ta_clear.has-hover ? rgba(255, 59, 48, 0.25) : rgba(255, 59, 48, 0.15);
+                    animate background { duration: 150ms; }
+                    Text { text: "CLEAR"; color: #ff453a; font-size: 9px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                    ta_clear := TouchArea { width: 100%; height: 100%; clicked => { root.clear-clipboard(); } }
+                }
+            }
+            if root.clipboard-history.length == 0 : Text {
+                text: "Nothing copied yet";
+                color: rgba(255, 255, 255, 0.4);
+                font-size: 11px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            
+            ListView {
+                for item in root.clipboard-history : ta := TouchArea {
+                    height: 62px;
+                    property <float> current-scale: self.pressed ? 0.95 : (self.has-hover ? 1.02 : 1.0);
+                    animate current-scale { duration: 150ms; easing: Theme.spring-easing; }
+                    clicked => { root.paste-clip(item.id); }
+                    
+                    Rectangle {
+                        width: parent.width * parent.current-scale;
+                        height: 54px * parent.current-scale;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 12px;
+                        background: ta.has-hover ? rgba(255, 255, 255, 0.08) : rgba(255, 255, 255, 0.04);
+                        border-width: 1px;
+                        border-color: ta.has-hover ? rgba(255, 255, 255, 0.15) : rgba(255, 255, 255, 0.05);
+                        drop-shadow-blur: 8px;
+                        drop-shadow-color: rgba(0, 0, 0, 0.3);
+                        drop-shadow-offset-y: 4px;
+                        
+                        HorizontalBox {
+                            padding: 10px;
+                            alignment: start;
+                            spacing: 14px;
+                            
+                            if item.has_image : Image {
+                                width: 34px; height: 34px;
+                                source: item.image_data;
+                                image-fit: cover;
+                            }
+                            if !item.has_image : AnimatedIcon {
+                                icon-size: 16px;
+                                fill: Theme.accent-info;
+                                // Clipboard Icon Path
+                                commands: "M 14 2 L 10.83 2 C 10.42 0.84 9.31 0 8 0 C 6.69 0 5.58 0.84 5.17 2 L 2 2 C 0.9 2 0 2.9 0 4 L 0 18 C 0 19.1 0.9 20 2 20 L 14 20 C 15.1 20 16 19.1 16 18 L 16 4 C 16 2.9 15.1 2 14 2 Z M 8 2 C 8.55 2 9 2.45 9 3 C 9 3.55 8.55 4 8 4 C 7.45 4 7 3.55 7 3 C 7 2.45 7.45 2 8 2 Z M 14 18 L 2 18 L 2 4 L 14 4 L 14 18 Z";
+                            }
+                            
+                            Text { 
+                                text: item.text; 
+                                color: #ffffff; 
+                                font-size: 13px; 
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if root.active-section == IslandSection.Notification : TouchArea {
+            width: 100%; height: 100%;
+            clicked => {
+                root.active-section = IslandSection.Compact;
+                root.target-width = 220px;
+                root.target-height = 42px;
+            }
+            VerticalBox {
+                alignment: center;
+                padding: 16px;
+                spacing: 8px;
+                
+                HorizontalBox {
+                    alignment: start;
+                    spacing: 8px;
+                    
+                    if root.has-notif-icon : Image {
+                        width: 16px; height: 16px;
+                        source: root.notif-icon;
+                        image-fit: contain;
+                    }
+                    if !root.has-notif-icon : Rectangle {
+                        width: 16px; height: 16px;
+                        border-radius: 4px;
+                        background: #0a84ff;
+                        Text { text: "🔔"; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                    Text { text: root.notif-app-name; color: #0a84ff; font-size: 11px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+                }
+                
+                VerticalBox {
+                    spacing: 4px;
+                    Text { text: root.notif-summary; color: #ffffff; font-size: 14px; font-weight: 700; overflow: elide; }
+                    Text { text: root.notif-body; color: #a1a1a6; font-size: 12px; overflow: elide; wrap: word-wrap; }
+                }
+            }
+        }
+        
+        if root.active-section == IslandSection.NotificationHistory : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 12px;
+            
+            HorizontalBox {
+                alignment: space-between;
+                Text { text: "NOTIFICATIONS"; color: #0a84ff; font-size: 10px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+                
+                Rectangle {
+                    width: 45px; height: 18px;
+                    border-radius: 4px;
+                    background: ta_clear_notifs.has-hover ? rgba(255, 59, 48, 0.2) : rgba(255, 59, 48, 0.1);
+                    Text { text: "CLEAR"; color: #ff3b30; font-size: 9px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                    ta_clear_notifs := TouchArea { width: 100%; height: 100%; clicked => { root.clear-notif-history(); } }
+                }
+            }
+            
+            ScrollView {
+                height: 160px;
+                VerticalBox {
+                    spacing: 8px;
+                    alignment: start;
+                    for item in root.notif-history : Rectangle {
+                        height: 50px;
+                        border-radius: 8px;
+                        background: rgba(255, 255, 255, 0.05);
+                        
+                        HorizontalBox {
+                            padding: 8px;
+                            alignment: start;
+                            spacing: 12px;
+                            
+                            if item.has-icon : Image {
+                                width: 34px; height: 34px;
+                                source: item.icon;
+                                image-fit: contain;
+                            }
+                            if !item.has-icon : Rectangle {
+                                width: 34px; height: 34px;
+                                border-radius: 4px;
+                                background: rgba(255, 255, 255, 0.1);
+                                Text { text: "🔔"; horizontal-alignment: center; vertical-alignment: center; }
+                            }
+                            
+                            VerticalBox {
+                                spacing: 2px;
+                                Text { text: item.summary; color: #ffffff; font-size: 13px; font-weight: 700; overflow: elide; }
+                                Text { text: item.body; color: #a1a1a6; font-size: 11px; overflow: elide; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if root.active-section == IslandSection.AppLauncher : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 12px;
+            
+            Rectangle {
+                height: 36px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.1);
+                
+                HorizontalBox {
+                    padding: 8px;
+                    spacing: 8px;
+                    Text { text: "🔍"; font-size: 14px; vertical-alignment: center; }
+                    TextInput {
+                        font-size: 14px;
+                        color: #ffffff;
+                        width: 100%;
+                        vertical-alignment: center;
+                        single-line: true;
+                        init => { self.focus(); }
+                        edited => { root.search-apps(self.text); }
+                        accepted => {
+                            if root.app-results.length > 0 {
+                                root.launch-app(root.app-results[0].exec_cmd);
+                            }
+                        }
+                    }
+                }
+            }
+            if root.app-results.length == 0 : Text {
+                text: "No apps match...";
+                color: rgba(255, 255, 255, 0.4);
+                font-size: 11px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            
+            ListView {
+                for item in root.app-results : ta_app := TouchArea {
+                    height: 40px;
+                    clicked => { root.launch-app(item.exec_cmd); }
+                    
+                    Rectangle {
+                        border-radius: 8px;
+                        background: ta_app.has-hover ? rgba(255, 255, 255, 0.08) : rgba(255, 255, 255, 0.03);
+                        border-width: 1px;
+                        border-color: ta_app.has-hover ? rgba(255, 255, 255, 0.12) : rgba(255, 255, 255, 0.04);
+                        animate background { duration: 150ms; }
+                        animate border-color { duration: 150ms; }
+                        
+                        HorizontalBox {
+                            padding: 6px;
+                            spacing: 12px;
+                            alignment: start;
+                            
+                            if item.has-icon : Image {
+                                width: 28px; height: 28px;
+                                source: item.icon;
+                                image-fit: contain;
+                            }
+                            if !item.has-icon : Rectangle {
+                                width: 28px; height: 28px;
+                                border-radius: 4px;
+                                background: rgba(255, 255, 255, 0.1);
+                                Text { text: "▶"; horizontal-alignment: center; vertical-alignment: center; font-size: 10px; }
+                            }
+                            
+                            Text { text: item.name; color: #ffffff; font-size: 13px; font-weight: 600; vertical-alignment: center; overflow: elide; }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if root.active-section == IslandSection.TodoManager : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 10px;
+
+            // Header Layout
+            HorizontalBox {
+                padding: 0px;
+                alignment: space-between;
+                
+                VerticalBox {
+                    padding: 0px;
+                    spacing: 2px;
+                    alignment: center;
+                    Text { 
+                        text: root.current-month-year-label != "" ? root.current-month-year-label : "TODAY'S TASKS"; 
+                        font-size: 13px; font-weight: 800; color: Theme.accent-success; 
+                    }
+                    Text {
+                        text: root.active-tasks.length == 0 ? "All caught up! 🎉" : (root.active-tasks.length + " tasks remaining");
+                        font-size: 10px; color: rgba(255, 255, 255, 0.4); font-weight: 600;
+                    }
+                }
+                
+                HorizontalBox {
+                    spacing: 12px;
+                    padding: 0px;
+                    alignment: center;
+                    
+                    // Switch to monthly grid
+                    TouchArea {
+                        clicked => {
+                            root.active-section = IslandSection.CalendarView;
+                            root.target-width = 380px;
+                            root.target-height = 375px;
+                        }
+                        Text { text: "📅 Month"; font-size: 10px; color: Theme.accent-warning; font-weight: 700; vertical-alignment: center; }
+                    }
+                    
+                    // Clear completed
+                    TouchArea {
+                        clicked => { root.clear-completed-tasks(); }
+                        Text { text: "🧹 Sweep"; font-size: 10px; color: #ff3b30; font-weight: 700; vertical-alignment: center; }
+                    }
+                }
+            }
+
+            // Keyboard-driven Task Creator Row
+            Rectangle {
+                height: 32px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.04);
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.08);
+                
+                HorizontalBox {
+                    padding: 6px;
+                    spacing: 6px;
+                    Text { text: "+"; color: #8e8e93; font-size: 14px; vertical-alignment: center; }
+                    ti_task := TextInput {
+                        font-size: 12px;
+                        color: #ffffff;
+                        single-line: true;
+                        vertical-alignment: center;
+                        accepted => {
+                            if self.text != "" {
+                                root.add-task(self.text, root.selected-date-filter != "" ? root.selected-date-filter : "today");
+                                self.text = "";
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Quick Scheduling Buttons
+            HorizontalBox {
+                padding: 0px;
+                spacing: 8px;
+                alignment: start;
+                
+                Text {
+                    text: "Schedule: " + (root.selected-date-filter != "" ? ("Day " + root.selected-date-filter) : "Today");
+                    font-size: 10px;
+                    color: rgba(255, 255, 255, 0.4);
+                    vertical-alignment: center;
+                }
+                
+                // Today preset
+                TouchArea {
+                    clicked => {
+                        root.selected-date-filter = "";
+                    }
+                    Rectangle {
+                        height: 18px;
+                        border-radius: 9px;
+                        background: root.selected-date-filter == "" ? rgba(48, 209, 88, 0.15) : rgba(255, 255, 255, 0.04);
+                        border-width: 1px;
+                        border-color: root.selected-date-filter == "" ? Theme.accent-success : rgba(255, 255, 255, 0.08);
+                        
+                        HorizontalBox {
+                            padding-left: 8px; padding-right: 8px;
+                            padding-top: 0px; padding-bottom: 0px;
+                            Text { text: "Today"; font-size: 9px; color: root.selected-date-filter == "" ? Theme.accent-success : #ffffff; vertical-alignment: center; }
+                        }
+                    }
+                }
+                
+                // Tomorrow preset
+                TouchArea {
+                    clicked => {
+                        if ti_task.text != "" {
+                            root.add-task(ti_task.text, "tomorrow");
+                            ti_task.text = "";
+                        }
+                    }
+                    Rectangle {
+                        height: 18px;
+                        border-radius: 9px;
+                        background: rgba(255, 255, 255, 0.04);
+                        border-width: 1px;
+                        border-color: rgba(255, 255, 255, 0.08);
+                        
+                        HorizontalBox {
+                            padding-left: 8px; padding-right: 8px;
+                            padding-top: 0px; padding-bottom: 0px;
+                            Text { text: "Tomorrow ➔"; font-size: 9px; color: Theme.accent-info; vertical-alignment: center; }
+                        }
+                    }
+                }
+                
+                // Custom Date picker preset
+                TouchArea {
+                    clicked => {
+                        root.in-date-picker-mode = true;
+                        root.active-section = IslandSection.CalendarView;
+                        root.target-width = 380px;
+                        root.target-height = 375px;
+                    }
+                    Rectangle {
+                        height: 18px;
+                        border-radius: 9px;
+                        background: root.in-date-picker-mode ? rgba(255, 149, 0, 0.15) : rgba(255, 255, 255, 0.04);
+                        border-width: 1px;
+                        border-color: root.in-date-picker-mode ? Theme.accent-warning : rgba(255, 255, 255, 0.08);
+                        
+                        HorizontalBox {
+                            padding-left: 8px; padding-right: 8px;
+                            padding-top: 0px; padding-bottom: 0px;
+                            Text { text: "📅 Custom"; font-size: 9px; color: root.in-date-picker-mode ? Theme.accent-warning : #ffffff; vertical-alignment: center; }
+                        }
+                    }
+                }
+            }
+
+            // Integrated Calendar Horizontal Week Slider
+            Rectangle {
+                height: 40px;
+                background: rgba(255, 255, 255, 0.02);
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.04);
+                
+                ScrollView {
+                    width: 100%;
+                    height: 36px;
+                    viewport-width: 32px * 31;
+                    
+                    HorizontalBox {
+                        padding-left: 8px; padding-right: 8px;
+                        padding-top: 4px; padding-bottom: 4px;
+                        spacing: 8px;
+                        alignment: start;
+                        
+                        for day in root.calendar-days-grid : Rectangle {
+                            visible: day.text != "";
+                            width: day.text != "" ? 24px : 0px;
+                            height: day.text != "" ? 26px : 0px;
+                            background: root.selected-date-filter == day.text ? Theme.accent-success : rgba(255, 255, 255, 0.04);
+                            border-radius: 6px;
+                            border-width: day.text != "" ? 1px : 0px;
+                            border-color: root.selected-date-filter == day.text ? Theme.accent-success : rgba(255, 255, 255, 0.08);
+                            
+                            TouchArea {
+                                clicked => {
+                                    root.selected-date-filter = day.text;
+                                    root.filter-tasks-by-date(day.text);
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    Text {
+                                        text: day.text;
+                                        color: root.selected-date-filter == day.text ? #000000 : #ffffff;
+                                        font-size: 10px; font-weight: 700;
+                                        horizontal-alignment: center;
+                                    }
+                                    if day.has_event : Rectangle {
+                                        width: 3px; height: 3px; border-radius: 1.5px;
+                                        background: root.selected-date-filter == day.text ? #000000 : Theme.accent-warning;
+                                        x: (parent.width - self.width) / 2;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Tasks List
+            ScrollView {
+                height: 120px;
+                VerticalBox {
+                    spacing: 8px;
+                    alignment: start;
+                    for task in root.active-tasks : item_rect := Rectangle {
+                        height: 42px;
+                        background: card_ta.has-hover ? rgba(255, 255, 255, 0.06) : rgba(255, 255, 255, 0.03);
+                        border-radius: 10px;
+                        border-width: 1px;
+                        border-color: card_ta.has-hover ? rgba(255, 255, 255, 0.1) : rgba(255, 255, 255, 0.05);
+                        animate background { duration: 150ms; }
+                        animate border-color { duration: 150ms; }
+                        
+                        card_ta := TouchArea {
+                            width: 100%; height: 100%;
+                        }
+
+                        HorizontalBox {
+                            padding: 0px;
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            alignment: space-between;
+
+                            HorizontalLayout {
+                                spacing: 12px;
+                                alignment: start;
+                                
+                                ta_check := TouchArea {
+                                    width: 18px; height: 18px;
+                                    clicked => { 
+                                        root.toggle-task-completion(task.id);
+                                        root.play-alert-sound();
+                                    }
+                                    
+                                    property <float> checkbox-scale: self.pressed ? 0.8 : (self.has-hover ? 1.15 : 1.0);
+                                    animate checkbox-scale { duration: 100ms; }
+                                    
+                                    Rectangle {
+                                        width: 18px * parent.checkbox-scale;
+                                        height: 18px * parent.checkbox-scale;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        border-radius: self.width / 2;
+                                        border-width: 2px;
+                                        border-color: task.is_completed ? Theme.accent-success : (ta_check.has-hover ? #ffffff : rgba(255, 255, 255, 0.3));
+                                        background: task.is_completed ? Theme.accent-success : transparent;
+                                        animate background { duration: 150ms; }
+                                        animate border-color { duration: 150ms; }
+                                        
+                                        if task.is_completed : Path {
+                                            width: 8px; height: 6px;
+                                            stroke: #ffffff;
+                                            stroke-width: 2px;
+                                            commands: "M 0 3 L 3 6 L 8 0";
+                                            x: (parent.width - self.width) / 2;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+                                    }
+                                }
+                                
+                                // Text with strike-through line
+                                Rectangle {
+                                    height: 20px;
+                                    width: txt.width;
+                                    
+                                    txt := Text { 
+                                        text: task.title; 
+                                        color: task.is_completed ? rgba(255, 255, 255, 0.4) : #ffffff;
+                                        font-size: 13px;
+                                        font-weight: 500;
+                                        vertical-alignment: center;
+                                        animate color { duration: 150ms; }
+                                    }
+                                    
+                                    // Strike-through line rectangle
+                                    Rectangle {
+                                        x: 0;
+                                        y: parent.height / 2;
+                                        width: task.is_completed ? parent.width : 0px;
+                                        height: 1.5px;
+                                        background: rgba(255, 255, 255, 0.4);
+                                        animate width { duration: 200ms; easing: ease-in-out; }
+                                    }
+                                }
+                            }
+
+                            TouchArea {
+                                clicked => {
+                                    root.reschedule-task(task.id, "+1 day");
+                                }
+                                Text { 
+                                    text: task.due_date_str; 
+                                    font-size: 10px; 
+                                    color: #bf5af2;
+                                    font-weight: 700;
+                                    vertical-alignment: center;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if root.active-section == IslandSection.CalendarView : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 10px;
+
+            HorizontalBox {
+                alignment: space-between;
+                HorizontalBox {
+                    spacing: 12px;
+                    TouchArea {
+                        clicked => { root.change-month-offset(-1); }
+                        Text { text: "◀"; font-size: 12px; color: #8e8e93; vertical-alignment: center; }
+                    }
+                    Text { text: root.current-month-year-label; font-size: 12px; font-weight: 700; color: #ffffff; vertical-alignment: center; }
+                    TouchArea {
+                        clicked => { root.change-month-offset(1); }
+                        Text { text: "▶"; font-size: 12px; color: #8e8e93; vertical-alignment: center; }
+                    }
+                }
+                TouchArea {
+                    clicked => {
+                        root.active-section = IslandSection.TodoManager;
+                        root.target-width = 420px;
+                        root.target-height = 280px;
+                    }
+                    Text { text: "📋 Back to List"; font-size: 10px; color: #ff9500; vertical-alignment: center; }
+                }
+            }
+
+            HorizontalBox {
+                alignment: space-around;
+                Text { text: "S"; font-size: 10px; color: #8e8e93; }
+                Text { text: "M"; font-size: 10px; color: #8e8e93; }
+                Text { text: "T"; font-size: 10px; color: #8e8e93; }
+                Text { text: "W"; font-size: 10px; color: #8e8e93; }
+                Text { text: "T"; font-size: 10px; color: #8e8e93; }
+                Text { text: "F"; font-size: 10px; color: #8e8e93; }
+                Text { text: "S"; font-size: 10px; color: #8e8e93; }
+            }
+
+            Rectangle {
+                background: #121214;
+                border-radius: 12px;
+                height: 220px;
+
+                GridLayout {
+                    padding: 8px;
+                    spacing: 4px;
+                    for day[idx] in root.calendar-days-grid : Rectangle {
+                        row: floor(idx / 7);
+                        col: mod(idx, 7);
+                        width: 42px;
+                        height: 34px;
+                        background: day.text == "" ? #00000000 : (root.selected-date-filter == day.text ? #0a84ff : #1c1c1e);
+                        border-radius: 6px;
+
+                        TouchArea {
+                            clicked => {
+                                if day.text != "" {
+                                    root.selected-date-filter = day.text;
+                                    root.filter-tasks-by-date(day.text);
+                                    
+                                    if (root.in-date-picker-mode) {
+                                        root.active-section = IslandSection.TodoManager;
+                                        root.target-width = 420px;
+                                        root.target-height = 335px;
+                                        root.in-date-picker-mode = false;
+                                    }
+                                }
+                            }
+                            VerticalBox {
+                                alignment: center;
+                                spacing: 2px;
+                                Text {
+                                    text: day.text;
+                                    color: #ffffff;
+                                    font-size: 11px;
+                                    horizontal-alignment: center;
+                                }
+                                if day.has_event : HorizontalBox {
+                                    alignment: center;
+                                    Rectangle {
+                                        width: 4px; height: 4px;
+                                        border-radius: 2px;
+                                        background: #ff9500;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if root.active-section == IslandSection.SysMonitor : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 12px;
+
+            // Header
+            HorizontalBox {
+                padding: 0px;
+                alignment: space-between;
+                
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    
+                    Path {
+                        width: 14px; height: 14px;
+                        stroke: Theme.accent-info;
+                        stroke-width: 1.5px;
+                        commands: "M 3 3 L 13 3 L 13 13 L 3 13 Z M 5 1 L 5 3 M 8 1 L 8 3 M 11 1 L 11 3 M 15 5 L 13 5 M 15 8 L 13 8 M 15 11 L 13 11 M 5 15 L 5 13 M 8 15 L 8 13 M 11 15 L 11 13 M 1 5 L 3 5 M 1 8 L 3 8 M 1 11 L 3 11";
+                        y: (parent.height - self.height) / 2;
+                    }
+                    Text { 
+                        text: "RESOURCE DIAGNOSTICS"; 
+                        font-size: 11px; font-weight: 800; color: Theme.accent-info; 
+                        vertical-alignment: center;
+                    }
+                }
+                
+                TouchArea {
+                    clicked => {
+                        root.active-section = IslandSection.Compact;
+                        root.target-width = 220px;
+                        root.target-height = 42px;
+                    }
+                    Text { text: "✕ Close"; font-size: 10px; color: #ff3b30; font-weight: 700; vertical-alignment: center; }
+                }
+            }
+
+            // CPU Stats Card
+            Rectangle {
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.06);
+                
+                VerticalBox {
+                    padding: 10px;
+                    spacing: 6px;
+                    
+                    HorizontalBox {
+                        padding: 0px;
+                        alignment: space-between;
+                        Text { text: "Processor (CPU)"; font-size: 11px; font-weight: 700; color: #ffffff; }
+                        Text { text: Math.round(root.cpu-usage * 100) + "%"; font-size: 11px; font-weight: 700; color: root.cpu-usage > 0.8 ? Theme.accent-error : Theme.accent-success; }
+                    }
+                    
+                    // Progress Bar
+                    Rectangle {
+                        height: 5px;
+                        background: rgba(255, 255, 255, 0.1);
+                        border-radius: 2.5px;
+                        
+                        Rectangle {
+                            x: 0px;
+                            width: parent.width * root.cpu-usage;
+                            height: 100%;
+                            background: root.cpu-usage > 0.8 ? Theme.accent-error : Theme.accent-success;
+                            border-radius: 2.5px;
+                            animate width { duration: 250ms; }
+                        }
+                    }
+                }
+            }
+
+            // RAM Stats Card
+            Rectangle {
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: rgba(255, 255, 255, 0.06);
+                
+                VerticalBox {
+                    padding: 10px;
+                    spacing: 6px;
+                    
+                    HorizontalBox {
+                        padding: 0px;
+                        alignment: space-between;
+                        Text { text: "System RAM (Memory)"; font-size: 11px; font-weight: 700; color: #ffffff; }
+                        Text { text: Math.round(root.memory-usage * 100) + "%"; font-size: 11px; font-weight: 700; color: root.memory-usage > 0.85 ? Theme.accent-error : Theme.accent-warning; }
+                    }
+                    
+                    // Progress Bar
+                    Rectangle {
+                        height: 5px;
+                        background: rgba(255, 255, 255, 0.1);
+                        border-radius: 2.5px;
+                        
+                        Rectangle {
+                            x: 0px;
+                            width: parent.width * root.memory-usage;
+                            height: 100%;
+                            background: root.memory-usage > 0.85 ? Theme.accent-error : Theme.accent-warning;
+                            border-radius: 2.5px;
+                            animate width { duration: 250ms; }
+                        }
+                    }
+                }
+            }
+        }
+
+        if root.active-section == IslandSection.SysControls : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 12px;
+            
+            // Tab Header (Wi-Fi / Bluetooth / Audio / Display)
+            HorizontalBox {
+                spacing: 8px;
+                alignment: center;
+                Rectangle {
+                    width: 70px; height: 26px; border-radius: 6px;
+                    background: root.active-connectivity-tab == "wifi" ? rgba(10, 132, 255, 0.2) : rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: root.active-connectivity-tab == "wifi" ? rgba(10, 132, 255, 0.4) : transparent;
+                    Text { text: "Wi-Fi"; color: root.active-connectivity-tab == "wifi" ? #0a84ff : #ffffff; font-size: 11px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.active-connectivity-tab = "wifi"; } }
+                }
+                Rectangle {
+                    width: 80px; height: 26px; border-radius: 6px;
+                    background: root.active-connectivity-tab == "bluetooth" ? rgba(10, 132, 255, 0.2) : rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: root.active-connectivity-tab == "bluetooth" ? rgba(10, 132, 255, 0.4) : transparent;
+                    Text { text: "Bluetooth"; color: root.active-connectivity-tab == "bluetooth" ? #0a84ff : #ffffff; font-size: 11px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.active-connectivity-tab = "bluetooth"; } }
+                }
+                Rectangle {
+                    width: 70px; height: 26px; border-radius: 6px;
+                    background: root.active-connectivity-tab == "audio" ? rgba(191, 90, 242, 0.2) : rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: root.active-connectivity-tab == "audio" ? rgba(191, 90, 242, 0.4) : transparent;
+                    Text { text: "Audio"; color: root.active-connectivity-tab == "audio" ? #bf5af2 : #ffffff; font-size: 11px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.active-connectivity-tab = "audio"; } }
+                }
+                Rectangle {
+                    width: 70px; height: 26px; border-radius: 6px;
+                    background: root.active-connectivity-tab == "display" ? rgba(255, 159, 10, 0.2) : rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: root.active-connectivity-tab == "display" ? rgba(255, 159, 10, 0.4) : transparent;
+                    Text { text: "Display"; color: root.active-connectivity-tab == "display" ? #ff9f0a : #ffffff; font-size: 11px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.active-connectivity-tab = "display"; } }
+                }
+            }
+
+            // Wi-Fi View
+            if root.active-connectivity-tab == "wifi" : VerticalBox {
+                spacing: 8px;
+                HorizontalBox {
+                    alignment: space-between;
+                    Text { text: root.wifi-enabled ? "Wi-Fi: On" : "Wi-Fi: Off"; color: root.wifi-enabled ? #30d158 : #8e8e93; font-size: 11px; font-weight: 700; vertical-alignment: center; }
+                    HorizontalBox {
+                        spacing: 8px;
+                        // Toggle Button
+                        Rectangle {
+                            width: 50px; height: 20px; border-radius: 10px;
+                            background: root.wifi-enabled ? #30d158 : rgba(255, 255, 255, 0.1);
+                            Text { text: root.wifi-enabled ? "Disable" : "Enable"; color: #ffffff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                            TouchArea { clicked => { root.toggle-wifi(!root.wifi-enabled); } }
+                        }
+                        // Scan Button
+                        Rectangle {
+                            width: 50px; height: 20px; border-radius: 10px;
+                            background: rgba(10, 132, 255, 0.15);
+                            Text { text: "Rescan"; color: #0a84ff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                            TouchArea { clicked => { root.scan-wifi(); } }
+                        }
+                    }
+                }
+                
+                ScrollView {
+                    height: 135px;
+                    VerticalBox {
+                        spacing: 6px;
+                        for net in root.wifi-networks : Rectangle {
+                            height: 36px;
+                            border-radius: 8px;
+                            background: rgba(255, 255, 255, 0.04);
+                            HorizontalBox {
+                                padding-left: 8px; padding-right: 8px;
+                                alignment: space-between;
+                                Text { text: net.ssid + " (" + net.signal + "%)"; color: #ffffff; font-size: 11px; vertical-alignment: center; }
+                                if net.connected : Rectangle {
+                                    width: 70px; height: 20px; border-radius: 4px;
+                                    background: rgba(255, 59, 48, 0.15);
+                                    Text { text: "Disconnect"; color: #ff3b30; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                    TouchArea { clicked => { root.disconnect-wifi(); } }
+                                }
+                                if !net.connected : HorizontalBox {
+                                    spacing: 6px;
+                                    wifi_pass := LineEdit {
+                                        width: 80px; font-size: 10px; text: ""; placeholder-text: "Password";
+                                    }
+                                    Rectangle {
+                                        width: 50px; height: 20px; border-radius: 4px;
+                                        background: rgba(10, 132, 255, 0.15);
+                                        Text { text: "Connect"; color: #0a84ff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                        TouchArea { clicked => { root.connect-wifi(net.ssid, wifi_pass.text); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bluetooth View
+            if root.active-connectivity-tab == "bluetooth" : VerticalBox {
+                spacing: 8px;
+                HorizontalBox {
+                    alignment: space-between;
+                    Text { text: root.bluetooth-enabled ? "Bluetooth: On" : "Bluetooth: Off"; color: root.bluetooth-enabled ? #30d158 : #8e8e93; font-size: 11px; font-weight: 700; vertical-alignment: center; }
+                    HorizontalBox {
+                        spacing: 8px;
+                        // Toggle Button
+                        Rectangle {
+                            width: 50px; height: 20px; border-radius: 10px;
+                            background: root.bluetooth-enabled ? #30d158 : rgba(255, 255, 255, 0.1);
+                            Text { text: root.bluetooth-enabled ? "Disable" : "Enable"; color: #ffffff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                            TouchArea { clicked => { root.toggle-bluetooth(!root.bluetooth-enabled); } }
+                        }
+                        // Scan Button
+                        Rectangle {
+                            width: 50px; height: 20px; border-radius: 10px;
+                            background: rgba(10, 132, 255, 0.15);
+                            Text { text: "Rescan"; color: #0a84ff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                            TouchArea { clicked => { root.scan-bluetooth(); } }
+                        }
+                    }
+                }
+                
+                ScrollView {
+                    height: 135px;
+                    VerticalBox {
+                        spacing: 6px;
+                        for dev in root.bluetooth-devices : Rectangle {
+                            height: 36px;
+                            border-radius: 8px;
+                            background: rgba(255, 255, 255, 0.04);
+                            HorizontalBox {
+                                padding-left: 8px; padding-right: 8px;
+                                alignment: space-between;
+                                Text { text: dev.name; color: #ffffff; font-size: 11px; vertical-alignment: center; }
+                                if dev.connected : Rectangle {
+                                    width: 70px; height: 20px; border-radius: 4px;
+                                    background: rgba(255, 59, 48, 0.15);
+                                    Text { text: "Disconnect"; color: #ff3b30; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                    TouchArea { clicked => { root.disconnect-bluetooth(dev.mac); } }
+                                }
+                                if !dev.connected : Rectangle {
+                                    width: 60px; height: 20px; border-radius: 4px;
+                                    background: rgba(10, 132, 255, 0.15);
+                                    Text { text: "Connect"; color: #0a84ff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                    TouchArea { clicked => { root.connect-bluetooth(dev.mac); } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Audio Tab
+            if root.active-connectivity-tab == "audio" : ScrollView {
+                height: 200px;
+                VerticalBox {
+                    spacing: 16px;
+                    
+                    // Output
+                    VerticalBox {
+                        spacing: 8px;
+                        Text { text: "Output Devices"; color: rgba(255, 255, 255, 0.8); font-size: 12px; font-weight: 700; }
+                        
+                        VerticalBox {
+                            spacing: 4px;
+                            HorizontalBox {
+                                alignment: space-between;
+                                Text { text: "Master Volume"; color: rgba(255, 255, 255, 0.6); font-size: 11px; }
+                                Text { text: Math.round(root.volume-level) + "%"; color: #ffffff; font-size: 11px; font-weight: 700; }
+                            }
+                            Rectangle {
+                                height: ta_out.pressed ? 32px : 24px;
+                                animate height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+                                border-radius: self.height / 2;
+                                background: rgba(255, 255, 255, 0.06);
+                                clip: true;
+                                
+                                Rectangle {
+                                    x: 0;
+                                    width: parent.width * (root.volume-level / 100);
+                                    height: parent.height;
+                                    background: Theme.volume-gradient;
+                                    animate width { duration: 150ms; easing: ease-out; }
+                                    
+                                    Rectangle {
+                                        width: parent.height - 6px;
+                                        height: parent.height - 6px;
+                                        border-radius: (parent.height - 6px) / 2;
+                                        background: #ffffff;
+                                        x: Math.max(2px, parent.width - self.width - 3px);
+                                        y: 3px;
+                                        border-width: 1px;
+                                        border-color: rgba(255, 255, 255, 0.9);
+                                    }
+                                }
+                                
+                                ta_out := TouchArea {
+                                    moved => {
+                                        let new-val = (self.mouse-x / parent.width) * 100;
+                                        root.set-volume(Math.max(0.0, Math.min(100.0, new-val)));
+                                    }
+                                    clicked => {
+                                        let new-val = (self.mouse-x / parent.width) * 100;
+                                        root.set-volume(Math.max(0.0, Math.min(100.0, new-val)));
+                                    }
+                                }
+                            }
+                        }
+                        
+                        VerticalBox {
+                            spacing: 6px;
+                            for dev in root.audio-sinks : Rectangle {
+                                height: 36px;
+                                border-radius: 8px;
+                                background: rgba(255, 255, 255, 0.04);
+                                HorizontalBox {
+                                    padding-left: 8px; padding-right: 8px;
+                                    alignment: space-between;
+                                    Text { text: dev.name; color: #ffffff; font-size: 11px; vertical-alignment: center; }
+                                    if dev.is_default : Rectangle {
+                                        width: 60px; height: 20px; border-radius: 4px;
+                                        background: rgba(191, 90, 242, 0.15);
+                                        Text { text: "Active"; color: #bf5af2; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    if !dev.is_default : Rectangle {
+                                        width: 60px; height: 20px; border-radius: 4px;
+                                        background: rgba(255, 255, 255, 0.1);
+                                        Text { text: "Select"; color: #ffffff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                        TouchArea { clicked => { root.set-default-audio(dev.id); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Input
+                    VerticalBox {
+                        spacing: 8px;
+                        Text { text: "Input Devices"; color: rgba(255, 255, 255, 0.8); font-size: 12px; font-weight: 700; }
+                        
+                        VerticalBox {
+                            spacing: 4px;
+                            HorizontalBox {
+                                alignment: space-between;
+                                Text { text: "Microphone Level"; color: rgba(255, 255, 255, 0.6); font-size: 11px; }
+                                Text { text: Math.round(root.mic-level) + "%"; color: #ffffff; font-size: 11px; font-weight: 700; }
+                            }
+                            Rectangle {
+                                height: ta_in.pressed ? 32px : 24px;
+                                animate height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+                                border-radius: self.height / 2;
+                                background: rgba(255, 255, 255, 0.06);
+                                clip: true;
+                                
+                                Rectangle {
+                                    x: 0;
+                                    width: parent.width * (root.mic-level / 100);
+                                    height: parent.height;
+                                    background: Theme.mic-gradient;
+                                    animate width { duration: 150ms; easing: ease-out; }
+                                    
+                                    Rectangle {
+                                        width: parent.height - 6px;
+                                        height: parent.height - 6px;
+                                        border-radius: (parent.height - 6px) / 2;
+                                        background: #ffffff;
+                                        x: Math.max(2px, parent.width - self.width - 3px);
+                                        y: 3px;
+                                        border-width: 1px;
+                                        border-color: rgba(255, 255, 255, 0.9);
+                                    }
+                                }
+                                
+                                ta_in := TouchArea {
+                                    moved => {
+                                        let new-val = (self.mouse-x / parent.width) * 100;
+                                        root.set-mic-volume(Math.max(0.0, Math.min(100.0, new-val)));
+                                    }
+                                    clicked => {
+                                        let new-val = (self.mouse-x / parent.width) * 100;
+                                        root.set-mic-volume(Math.max(0.0, Math.min(100.0, new-val)));
+                                    }
+                                }
+                            }
+                        }
+                        
+                        VerticalBox {
+                            spacing: 6px;
+                            for dev in root.audio-sources : Rectangle {
+                                height: 36px;
+                                border-radius: 8px;
+                                background: rgba(255, 255, 255, 0.04);
+                                HorizontalBox {
+                                    padding-left: 8px; padding-right: 8px;
+                                    alignment: space-between;
+                                    Text { text: dev.name; color: #ffffff; font-size: 11px; vertical-alignment: center; }
+                                    if dev.is_default : Rectangle {
+                                        width: 60px; height: 20px; border-radius: 4px;
+                                        background: rgba(48, 209, 88, 0.15);
+                                        Text { text: "Active"; color: #30d158; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                    }
+                                    if !dev.is_default : Rectangle {
+                                        width: 60px; height: 20px; border-radius: 4px;
+                                        background: rgba(255, 255, 255, 0.1);
+                                        Text { text: "Select"; color: #ffffff; font-size: 9px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+                                        TouchArea { clicked => { root.set-default-audio(dev.id); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Display Tab
+            if root.active-connectivity-tab == "display" : VerticalBox {
+                spacing: 12px;
+                
+                VerticalBox {
+                    spacing: 4px;
+                    HorizontalBox {
+                        alignment: space-between;
+                        Text { text: "Display Brightness"; color: rgba(255, 255, 255, 0.6); font-size: 11px; }
+                        Text { text: Math.round(root.brightness-level) + "%"; color: #ffffff; font-size: 11px; font-weight: 700; }
+                    }
+                    Rectangle {
+                        height: ta_bright.pressed ? 32px : 24px;
+                        animate height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+                        border-radius: self.height / 2;
+                        background: rgba(255, 255, 255, 0.06);
+                        clip: true;
+                        
+                        Rectangle {
+                            x: 0;
+                            width: parent.width * (root.brightness-level / 100);
+                            height: parent.height;
+                            background: Theme.bright-gradient;
+                            animate width { duration: 150ms; easing: ease-out; }
+                            
+                            Rectangle {
+                                width: parent.height - 6px;
+                                height: parent.height - 6px;
+                                border-radius: (parent.height - 6px) / 2;
+                                background: #ffffff;
+                                x: Math.max(2px, parent.width - self.width - 3px);
+                                y: 3px;
+                                border-width: 1px;
+                                border-color: rgba(255, 255, 255, 0.9);
+                            }
+                        }
+                        
+                        ta_bright := TouchArea {
+                            moved => {
+                                let new-val = (self.mouse-x / parent.width) * 100;
+                                root.set-brightness(Math.max(0.0, Math.min(100.0, new-val)));
+                            }
+                            clicked => {
+                                let new-val = (self.mouse-x / parent.width) * 100;
+                                root.set-brightness(Math.max(0.0, Math.min(100.0, new-val)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if root.active-section == IslandSection.SystemTray : VerticalBox {
+            opacity: 0.0;
+            init => { self.opacity = 1.0; }
+            animate opacity { duration: 200ms; easing: ease-out; }
+
+            padding: 16px; padding-bottom: 48px;
+            spacing: 12px;
+            
+            HorizontalBox {
+                alignment: space-between;
+                Text { text: "SYSTEM TRAY"; color: #30d158; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+            }
+            
+            ScrollView {
+                height: 50px;
+                HorizontalBox {
+                    alignment: start;
+                    spacing: 12px;
+                    for app in root.system-tray-apps : Rectangle {
+                        width: 40px; height: 40px;
+                        border-radius: 8px;
+                        background: rgba(255, 255, 255, 0.05);
+                        
+                        if app.has-icon : Image {
+                            width: 24px; height: 24px;
+                            source: app.icon;
+                            image-fit: contain;
+                        }
+                        if !app.has-icon : Text {
+                            text: "✦";
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                            color: #8e8e93;
+                        }
+                        TouchArea {
+                            clicked => { root.activate-tray-item(app.id); }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Navigation Dock
+        if root.active-section != IslandSection.Compact && root.active-section != IslandSection.Notification : Rectangle {
+            width: 260px;
+            height: root.show-navigation-dock ? 34px : 6px;
+            background: rgba(10, 10, 12, 0.92);
+            border-radius: self.height / 2;
+            border-width: 1px;
+            border-color: rgba(255, 255, 255, 0.08);
+            y: parent.height - self.height - 8px;
+            x: (parent.width - self.width) / 2;
+            clip: true;
+            
+            animate height { duration: 180ms; easing: cubic-bezier(0.16, 1, 0.3, 1); }
+            animate border-radius { duration: 180ms; easing: cubic-bezier(0.16, 1, 0.3, 1); }
+            
+            HorizontalBox {
+                padding-left: 8px; padding-right: 8px;
+                padding-top: 5px; padding-bottom: 5px;
+                alignment: space-around;
+                spacing: 8px;
+                opacity: root.show-navigation-dock ? 1.0 : 0.0;
+                animate opacity { duration: 120ms; }
+                
+                // 1. Media (Accent: Primary/Purple)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.Media; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/music.svg");
+                        colorize: root.active-section == IslandSection.Media ? Theme.accent-primary : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+                
+                // 2. Clipboard (Accent: Warning/Orange)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.Clipboard; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/clipboard.svg");
+                        colorize: root.active-section == IslandSection.Clipboard ? Theme.accent-warning : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+                
+                // 3. SysControls (Accent: Yellow)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.SysControls; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/sliders.svg");
+                        colorize: root.active-section == IslandSection.SysControls ? #ffd60a : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+                
+                // 4. AppLauncher (Accent: Info/Blue)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.AppLauncher; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/search.svg");
+                        colorize: root.active-section == IslandSection.AppLauncher ? Theme.accent-info : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+                
+                // 5. TodoManager (Accent: Success/Green)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.TodoManager; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/check-circle.svg");
+                        colorize: (root.active-section == IslandSection.TodoManager || root.active-section == IslandSection.CalendarView) ? Theme.accent-success : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+                
+                // 6. SystemTray (Accent: Pink/Hot Red)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.SystemTray; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/grid.svg");
+                        colorize: root.active-section == IslandSection.SystemTray ? #ff375f : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+                
+                // 7. NotificationHistory (Accent: Error/Red)
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.active-section = IslandSection.NotificationHistory; }
+                    Image {
+                        width: 16px; height: 16px;
+                        source: @image-url("../assets/icons/bell.svg");
+                        colorize: root.active-section == IslandSection.NotificationHistory ? Theme.accent-error : rgba(255, 255, 255, 0.4);
+                        animate colorize { duration: 150ms; }
+                    }
+                }
+            }
+        }
+    }
+}

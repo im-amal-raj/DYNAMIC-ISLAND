@@ -1,0 +1,29 @@
+export global Theme {
+    // Glass Surface Tokens
+    in-out property <color> surface-top: rgba(14, 14, 16, 0.85);
+    in-out property <color> surface-bottom: rgba(8, 8, 10, 0.80);
+    in-out property <brush> glass-gradient: @linear-gradient(180deg, rgba(14, 14, 16, 0.85) 0%, rgba(8, 8, 10, 0.80) 100%);
+    in-out property <color> border-color: rgba(255, 255, 255, 0.08);
+    in-out property <brush> border-gradient: @linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(191, 90, 242, 0.18) 100%);
+
+    // Dynamic Accents
+    in-out property <color> accent-primary: #bf5af2;
+    in-out property <color> accent-success: #30d158;
+    in-out property <color> accent-warning: #ff9f0a;
+    in-out property <color> accent-info: #0a84ff;
+    in-out property <color> accent-error: #ff3b30;
+
+    // Control Slider Gradients
+    in-out property <brush> volume-gradient: @linear-gradient(90deg, #0a84ff 0%, #bf5af2 100%);
+    in-out property <brush> mic-gradient: @linear-gradient(90deg, #ff9f0a 0%, #ff3b30 100%);
+    in-out property <brush> bright-gradient: @linear-gradient(90deg, #ffd60a 0%, #ff9f0a 100%);
+
+    // Fluid Motion System
+    in-out property <duration> spring-duration: 280ms;
+    // Slint currently uses cubic-bezier instead of real springs, this is mimicking an underdamped spring
+    in-out property <easing> spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
+    
+    // Quick Fade Transitions
+    in-out property <duration> fade-duration: 150ms;
+    in-out property <easing> fade-easing: ease-out;
+}

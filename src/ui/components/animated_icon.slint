@@ -1,0 +1,34 @@
+import { Theme } from "../theme.slint";
+
+export component AnimatedIcon inherits TouchArea {
+    in property <string> commands;
+    in property <color> fill: #ffffff;
+    in property <length> icon-size: 16px;
+    
+    width: 24px;
+    height: 24px;
+    
+    // Haptic scale effect
+    property <float> current-scale: self.pressed ? 0.85 : (self.has-hover ? 1.05 : 1.0);
+    animate current-scale { duration: 150ms; easing: Theme.fade-easing; }
+    
+    Path {
+        commands: root.commands;
+        fill: root.fill;
+        opacity: root.has-hover ? 0.25 : 0.0;
+        width: root.icon-size * root.current-scale * 1.3;
+        height: root.icon-size * root.current-scale * 1.3;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        animate opacity { duration: 150ms; easing: Theme.fade-easing; }
+    }
+    
+    Path {
+        commands: root.commands;
+        fill: root.fill;
+        width: root.icon-size * root.current-scale;
+        height: root.icon-size * root.current-scale;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+}
