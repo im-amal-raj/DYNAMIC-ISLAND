@@ -1,0 +1,232 @@
+import { Theme } from "../theme.slint";
+import { Slider, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { AnimatedIcon } from "../components/animated_icon.slint";
+
+export component MediaPanel inherits Rectangle {
+    in property <string> track-title: "";
+    in property <string> track-artist: "";
+    in property <bool> has-album-art: false;
+    in property <image> album-art: @image-url("");
+    in-out property <bool> is-playing: false;
+    in property <angle> art-rotation: 0deg;
+    in property <float> volume-level: 0.0;
+    in property <string> track-position-str: "--:--";
+    in property <string> track-duration-str: "--:--";
+    in property <float> track-progress: 0.0;
+
+    callback set-volume(float);
+    callback media-action(string);
+
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {}
+    }
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        alignment: center;
+        padding-left: 20px; padding-right: 20px;
+        padding-top: 15px; padding-bottom: 48px;
+        spacing: 12px;
+
+        // Album Art + Title / Artist stacked + Sound Visualizer
+        HorizontalBox {
+            padding: 0px;
+            spacing: 16px;
+            alignment: space-between;
+            
+            HorizontalLayout {
+                spacing: 16px;
+                alignment: start;
+                
+                // Rounded Album Art Card
+                Rectangle {
+                    width: 60px; height: 60px;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-width: 1px;
+                    border-color: rgba(255, 255, 255, 0.1);
+                    clip: true;
+                    
+                    if root.has-album-art : Image {
+                        width: 100%; height: 100%;
+                        source: root.album-art;
+                        image-fit: cover;
+                    }
+                    if !root.has-album-art : Image {
+                        width: 24px; height: 24px;
+                        source: @image-url("../../../assets/music_fallback.svg");
+                        image-fit: contain;
+                        colorize: Theme.accent-primary;
+                        x: 18px; y: 18px;
+                    }
+                }
+                
+                // Track Metadata Stack
+                VerticalBox {
+                    alignment: center;
+                    padding: 0px;
+                    spacing: 4px;
+                    width: 160px;
+                    
+                    Text { 
+                        text: root.track-title; 
+                        color: #ffffff; 
+                        font-weight: 700; 
+                        font-size: 14px; 
+                        overflow: elide; 
+                    }
+                    Text { 
+                        text: root.track-artist; 
+                        color: rgba(255, 255, 255, 0.5); 
+                        font-weight: 500; 
+                        font-size: 11px; 
+                        overflow: elide; 
+                    }
+                }
+            }
+            
+            // Sound Visualizer (5-bar equalizer wave animation)
+            HorizontalLayout {
+                spacing: 3px;
+                alignment: end;
+                height: 20px;
+                y: (60px - self.height) / 2;
+                
+                Rectangle { 
+                    width: 3px; 
+                    height: root.is-playing ? (6px + 10px * Math.sin(root.art-rotation * 4)) : 6px; 
+                    background: Theme.accent-primary; 
+                    border-radius: 1.5px;
+                    y: parent.height - self.height;
+                }
+                Rectangle { 
+                    width: 3px; 
+                    height: root.is-playing ? (4px + 14px * Math.sin(root.art-rotation * 6 + 45deg)) : 8px; 
+                    background: Theme.accent-primary; 
+                    border-radius: 1.5px;
+                    y: parent.height - self.height;
+                }
+                Rectangle { 
+                    width: 3px; 
+                    height: root.is-playing ? (8px + 11px * Math.sin(root.art-rotation * 3 - 30deg)) : 5px; 
+                    background: Theme.accent-info; 
+                    border-radius: 1.5px;
+                    y: parent.height - self.height;
+                }
+                Rectangle { 
+                    width: 3px; 
+                    height: root.is-playing ? (5px + 13px * Math.sin(root.art-rotation * 5 + 90deg)) : 7px; 
+                    background: Theme.accent-success; 
+                    border-radius: 1.5px;
+                    y: parent.height - self.height;
+                }
+                Rectangle { 
+                    width: 3px; 
+                    height: root.is-playing ? (7px + 9px * Math.sin(root.art-rotation * 2.5 + 60deg)) : 6px; 
+                    background: Theme.color-green; 
+                    border-radius: 1.5px;
+                    y: parent.height - self.height;
+                }
+            }
+        }
+
+        // Progress Timeline Slider (Dynamic)
+        VerticalBox {
+            padding: 0px;
+            spacing: 4px;
+            
+            Rectangle {
+                height: 4px;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 2px;
+                
+                // Active track line (dynamic playback position)
+                Rectangle {
+                    x: 0px;
+                    width: parent.width * root.track-progress;
+                    height: 100%;
+                    background: Theme.text-primary;
+                    border-radius: 2px;
+                }
+            }
+            
+            HorizontalBox {
+                padding: 0px;
+                alignment: space-between;
+                Text { text: root.track-position-str; font-size: 9px; color: Theme.text-tertiary; }
+                
+                HorizontalLayout {
+                    spacing: 6px;
+                    alignment: center;
+                    Image { width: 12px; height: 12px; source: @image-url("../../../assets/icons/volume-2.svg"); colorize: Theme.text-secondary; }
+                    Slider { width: 60px; height: 12px; value: root.volume-level; changed => { root.set-volume(self.value); } }
+                }
+
+                Text { text: root.track-duration-str; font-size: 9px; color: Theme.text-tertiary; }
+            }
+        }
+        
+        // Playback controls row
+        HorizontalLayout {
+            alignment: center;
+            spacing: 40px;
+            
+            VerticalLayout {
+                alignment: center;
+                AnimatedIcon {
+                    icon-size: 16px;
+                    commands: "M 12 0 L 2 6 L 12 12 Z M 2 0 L 0 0 L 0 12 L 2 12 Z";
+                    clicked => { root.media-action("previous"); }
+                }
+            }
+            
+            VerticalLayout {
+                alignment: center;
+                ta_play_pause := TouchArea {
+                    width: 44px; height: 44px;
+                    property <float> current-scale: self.pressed ? 0.88 : (self.has-hover ? 1.05 : 1.0);
+                    animate current-scale { duration: 150ms; easing: Theme.fade-easing; }
+                    clicked => { root.media-action("play-pause"); root.is-playing = !root.is-playing; }
+                    
+                    Rectangle {
+                        width: 44px * ta_play_pause.current-scale; 
+                        height: 44px * ta_play_pause.current-scale;
+                        border-radius: self.width / 2;
+                        background: rgba(255, 255, 255, 0.15);
+                        border-width: 1px;
+                        border-color: rgba(255, 255, 255, 0.25);
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        
+                        if root.is-playing : HorizontalLayout {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            width: 12px; height: 14px;
+                            spacing: 4px;
+                            Rectangle { width: 4px; height: 14px; background: #ffffff; border-radius: 1px; }
+                            Rectangle { width: 4px; height: 14px; background: #ffffff; border-radius: 1px; }
+                        }
+                        if !root.is-playing : Path {
+                            x: (parent.width - self.width) / 2 + 1.5px;
+                            y: (parent.height - self.height) / 2;
+                            width: 12px; height: 14px;
+                            viewbox-width: 12; viewbox-height: 14;
+                            fill: #ffffff;
+                            commands: "M 0 0 L 12 7 L 0 14 Z";
+                        }
+                    }
+                }
+            }
+            
+            VerticalLayout {
+                alignment: center;
+                AnimatedIcon {
+                    icon-size: 16px;
+                    commands: "M 0 0 L 10 6 L 0 12 Z M 10 0 L 12 0 L 12 12 L 10 12 Z";
+                    clicked => { root.media-action("next"); }
+                }
+            }
+        }
+    }
+}

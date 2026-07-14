@@ -1,0 +1,101 @@
+import { Theme } from "../../theme.slint";
+import { HorizontalBox, VerticalBox, LineEdit } from "std-widgets.slint";
+
+export component TaskInput inherits Rectangle {
+    in-out property <string> text;
+    in property <bool> in-date-picker: false;
+    
+    callback add-task(string);
+    callback open-calendar();
+    
+    height: 64px;
+
+    VerticalBox {
+        spacing: Theme.spacing-sm;
+
+        // Input row
+        Rectangle {
+            height: 36px;
+            border-radius: Theme.card-radius-small;
+            background: Theme.card-surface;
+            border-width: 1px;
+            border-color: Theme.border-color;
+            
+            Image {
+                x: Theme.spacing-md; y: (parent.height - self.height) / 2;
+                width: Theme.icon-size-md; height: Theme.icon-size-md;
+                source: @image-url("../../../../assets/icons/plus-light.svg");
+                colorize: Theme.text-tertiary;
+            }
+            
+            input := LineEdit {
+                x: Theme.spacing-md + Theme.icon-size-md + Theme.spacing-sm;
+                y: 2px;
+                width: parent.width - self.x - 40px;
+                height: parent.height - 4px;
+                placeholder-text: "Add task (e.g. 'Meeting @tomorrow !high')";
+                font-size: 13px;
+                text <=> root.text;
+                accepted => { 
+                    if (self.text != "") {
+                        root.add-task(self.text);
+                        self.text = "";
+                    }
+                }
+            }
+            
+            // Calendar Button
+            TouchArea {
+                width: 32px; height: 32px;
+                x: parent.width - self.width - 2px;
+                y: (parent.height - self.height) / 2;
+                clicked => { root.open-calendar(); }
+                
+                Image {
+                    width: Theme.icon-size-md; height: Theme.icon-size-md;
+                    x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                    source: root.in-date-picker ? @image-url("../../../../assets/icons/calendar-fill.svg") : @image-url("../../../../assets/icons/calendar-light.svg");
+                    colorize: root.in-date-picker ? Theme.color-blue : Theme.text-secondary;
+                }
+            }
+        }
+        
+        // Quick Chips
+        HorizontalBox {
+            spacing: Theme.spacing-sm;
+            alignment: start;
+            padding: 0;
+            
+            // Today Chip
+            TouchArea {
+                width: 50px; height: 20px;
+                clicked => { root.text += " @today"; input.focus(); }
+                Rectangle {
+                    width: 100%; height: 100%; border-radius: 4px;
+                    background: Theme.card-surface;
+                    Text { text: "Today"; color: Theme.text-secondary; font-size: 10px; font-weight: 500; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                }
+            }
+            // Tomorrow Chip
+            TouchArea {
+                width: 65px; height: 20px;
+                clicked => { root.text += " @tomorrow"; input.focus(); }
+                Rectangle {
+                    width: 100%; height: 100%; border-radius: 4px;
+                    background: Theme.card-surface;
+                    Text { text: "Tomorrow"; color: Theme.text-secondary; font-size: 10px; font-weight: 500; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                }
+            }
+            // High Priority Chip
+            TouchArea {
+                width: 60px; height: 20px;
+                clicked => { root.text += " !high"; input.focus(); }
+                Rectangle {
+                    width: 100%; height: 100%; border-radius: 4px;
+                    background: Theme.card-surface;
+                    Text { text: "High Prio"; color: Theme.color-red; font-size: 10px; font-weight: 500; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,26 @@
+import { Theme } from "../theme.slint";
+import { HorizontalBox } from "std-widgets.slint";
+
+export component SectionHeader inherits Rectangle {
+    in property <string> title;
+    in property <color> title-color: Theme.text-secondary;
+    
+    height: 24px;
+
+    HorizontalBox {
+        padding: 0px;
+        alignment: space-between;
+
+        Text {
+            text: root.title;
+            color: root.title-color;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            vertical-alignment: center;
+        }
+
+        // Slot for optional action buttons (like "Clear" or "Add")
+        @children
+    }
+}

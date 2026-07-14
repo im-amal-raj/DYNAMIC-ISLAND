@@ -1,0 +1,26 @@
+import { Theme } from "../theme.slint";
+
+export component GlassCard inherits Rectangle {
+    in property <bool> interactive: false;
+    
+    border-width: 1px;
+    border-radius: 12px;
+    
+    // Hover interactions if interactive
+    border-color: self.interactive && ta.has-hover ? Theme.card-border-hover : Theme.card-border;
+    background: self.interactive && ta.pressed ? Theme.card-surface-active : (self.interactive && ta.has-hover ? Theme.card-surface-hover : Theme.card-surface);
+    
+    animate border-color { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+    animate background { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+    
+    callback clicked <=> ta.clicked;
+    out property <bool> has-hover: ta.has-hover;
+    out property <bool> pressed: ta.pressed;
+    
+    ta := TouchArea {
+        width: 100%; height: 100%;
+        enabled: root.interactive;
+    }
+    
+    @children
+}

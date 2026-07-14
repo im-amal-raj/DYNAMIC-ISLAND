@@ -1,0 +1,39 @@
+import { Theme } from "../theme.slint";
+
+export component IconButton inherits TouchArea {
+    in property <image> icon-light;
+    in property <image> icon-fill;
+    in property <bool> is-active: false;
+    in property <color> active-color: Theme.text-primary;
+
+    width: Theme.touch-target-min;
+    height: Theme.touch-target-min;
+
+    // Outer container for visual layout
+    Rectangle {
+        width: 100%; height: 100%;
+        
+        Image {
+            width: Theme.icon-size-lg;
+            height: Theme.icon-size-lg;
+            source: root.icon-light;
+            opacity: root.is-active ? 0.0 : (root.has-hover ? 1.0 : 0.5);
+            colorize: root.has-hover ? Theme.text-primary : Theme.text-secondary;
+            animate opacity { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+            animate colorize { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+
+        Image {
+            width: Theme.icon-size-lg;
+            height: Theme.icon-size-lg;
+            source: root.icon-fill;
+            opacity: root.is-active ? 1.0 : 0.0;
+            colorize: root.active-color;
+            animate opacity { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+}

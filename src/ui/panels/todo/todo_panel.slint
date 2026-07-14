@@ -1,0 +1,125 @@
+import { Theme } from "../../theme.slint";
+import { TaskItem, IslandSection } from "../../types.slint";
+import { SectionHeader } from "../../components/section_header.slint";
+import { PillTabs, TabItem } from "../../components/pill_tabs.slint";
+import { EmptyState } from "../../components/empty_state.slint";
+import { TaskInput } from "task_input.slint";
+import { TaskItemRow } from "task_item.slint";
+import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
+
+export component TodoPanel inherits Rectangle {
+    in property <string> current-month-year-label: "";
+    in property <[TaskItem]> active-tasks;
+    in-out property <string> draft-task-text: "";
+    in-out property <bool> chime-on-due: true;
+    in-out property <IslandSection> active-section;
+    in-out property <bool> in-date-picker-mode: false;
+    in-out property <string> todo-filter: "Pending";
+
+    callback toggle-task-completion(int);
+    callback play-alert-sound();
+    callback delete-task(int);
+    callback clear-completed-tasks();
+    callback add-task(string, string, string);
+    callback todo-filter-changed(string);
+    callback open-calendar();
+
+    public function focus_input() {
+        // ti.focus_input(); // Assuming we expose this in the future
+    }
+
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {}
+    }
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: Theme.panel-padding; 
+        padding-bottom: Theme.panel-padding-bottom;
+        spacing: Theme.spacing-md;
+
+        // Header Row
+        SectionHeader {
+            title: root.current-month-year-label != "" ? root.current-month-year-label : "TODAY'S TASKS";
+            title-color: Theme.text-primary;
+            
+            HorizontalBox {
+                spacing: Theme.spacing-md;
+                padding: 0px;
+                alignment: end;
+                
+                TouchArea {
+                    width: 60px; height: 20px;
+                    clicked => { root.chime-on-due = !root.chime-on-due; }
+                    Text { 
+                        text: root.chime-on-due ? "🔊 Chime" : "🔇 Silent"; 
+                        font-size: 11px; 
+                        color: root.chime-on-due ? Theme.color-green : Theme.text-tertiary; 
+                        vertical-alignment: center; 
+                        font-weight: 600; 
+                    }
+                }
+                
+                TouchArea {
+                    width: 40px; height: 20px;
+                    clicked => { root.clear-completed-tasks(); }
+                    Text {
+                        text: "Clear";
+                        font-size: 11px;
+                        color: parent.has-hover ? Theme.color-red : Theme.text-tertiary;
+                        vertical-alignment: center;
+                        font-weight: 600;
+                        animate color { duration: Theme.micro-duration; }
+                    }
+                }
+            }
+        }
+
+        // Segmented Filter Tabs
+        PillTabs {
+            tabs: [
+                { id: "Pending", label: "Pending" },
+                { id: "Completed", label: "Completed" }
+            ];
+            active-tab: root.todo-filter;
+            tab-selected(id) => {
+                root.todo-filter = id;
+                root.todo-filter-changed(id);
+            }
+        }
+
+        // Task Creator Input
+        ti := TaskInput {
+            text <=> root.draft-task-text;
+            in-date-picker: root.in-date-picker-mode;
+            add-task(txt) => { root.add-task(txt, "today", "Medium"); }
+            open-calendar() => { root.open-calendar(); }
+        }
+
+        // Tasks List
+        ScrollView {
+            height: 180px;
+            VerticalBox {
+                spacing: Theme.spacing-sm;
+                alignment: start;
+                padding: 0px;
+                
+                if root.active-tasks.length == 0 : EmptyState {
+                    height: 120px;
+                    icon: @image-url("../../../../assets/icons/check-circle-light.svg");
+                    message: root.todo-filter == "Pending" ? "All caught up!" : "No completed tasks.";
+                }
+                
+                for task in root.active-tasks : TaskItemRow {
+                    task: task;
+                    toggle-completion() => { 
+                        root.toggle-task-completion(task.id);
+                        root.play-alert-sound();
+                    }
+                    delete() => { root.delete-task(task.id); }
+                }
+            }
+        }
+    }
+}

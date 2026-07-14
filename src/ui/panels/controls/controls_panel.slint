@@ -1,0 +1,95 @@
+import { Theme } from "../../theme.slint";
+import { WifiNetwork, BluetoothDevice, AudioDevice, IslandSection } from "../../types.slint";
+import { PillTabs } from "../../components/pill_tabs.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { WifiTab } from "wifi_tab.slint";
+import { BluetoothTab } from "bluetooth_tab.slint";
+import { AudioTab } from "audio_tab.slint";
+import { DisplayTab } from "display_tab.slint";
+
+export component SysControlsPanel inherits Rectangle {
+    in-out property <string> active-connectivity-tab: "wifi";
+    in property <bool> wifi-enabled: false;
+    in property <[WifiNetwork]> wifi-networks;
+    in property <bool> bluetooth-enabled: false;
+    in property <[BluetoothDevice]> bluetooth-devices;
+    
+    in property <float> volume-level: 0.0;
+    in property <[AudioDevice]> audio-sinks;
+    
+    in property <float> mic-level: 0.0;
+    in property <[AudioDevice]> audio-sources;
+    
+    in property <float> brightness-level: 0.0;
+
+    callback toggle-wifi(bool);
+    callback scan-wifi();
+    callback disconnect-wifi();
+    callback connect-wifi(string, string);
+    callback toggle-bluetooth(bool);
+    callback scan-bluetooth();
+    callback disconnect-bluetooth(string);
+    callback connect-bluetooth(string);
+    callback set-volume(float);
+    callback set-mic-volume(float);
+    callback set-default-audio(string);
+    callback set-brightness(float);
+
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {}
+    }
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: Theme.panel-padding; 
+        padding-bottom: Theme.panel-padding-bottom;
+        spacing: Theme.spacing-md;
+
+        PillTabs {
+            tabs: [
+                { id: "wifi", label: "Wi-Fi" },
+                { id: "bluetooth", label: "Bluetooth" },
+                { id: "audio", label: "Audio" },
+                { id: "display", label: "Display" }
+            ];
+            active-tab: root.active-connectivity-tab;
+            tab-selected(id) => {
+                root.active-connectivity-tab = id;
+            }
+        }
+
+        if root.active-connectivity-tab == "wifi" : WifiTab {
+            wifi-enabled: root.wifi-enabled;
+            wifi-networks: root.wifi-networks;
+            toggle-wifi(val) => { root.toggle-wifi(val); }
+            scan-wifi() => { root.scan-wifi(); }
+            disconnect-wifi() => { root.disconnect-wifi(); }
+            connect-wifi(ssid, pass) => { root.connect-wifi(ssid, pass); }
+        }
+
+        if root.active-connectivity-tab == "bluetooth" : BluetoothTab {
+            bluetooth-enabled: root.bluetooth-enabled;
+            bluetooth-devices: root.bluetooth-devices;
+            toggle-bluetooth(val) => { root.toggle-bluetooth(val); }
+            scan-bluetooth() => { root.scan-bluetooth(); }
+            disconnect-bluetooth(id) => { root.disconnect-bluetooth(id); }
+            connect-bluetooth(id) => { root.connect-bluetooth(id); }
+        }
+
+        if root.active-connectivity-tab == "audio" : AudioTab {
+            volume-level: root.volume-level;
+            audio-sinks: root.audio-sinks;
+            mic-level: root.mic-level;
+            audio-sources: root.audio-sources;
+            set-volume(val) => { root.set-volume(val); }
+            set-mic-volume(val) => { root.set-mic-volume(val); }
+            set-default-audio(id) => { root.set-default-audio(id); }
+        }
+
+        if root.active-connectivity-tab == "display" : DisplayTab {
+            brightness-level: root.brightness-level;
+            set-brightness(val) => { root.set-brightness(val); }
+        }
+    }
+}

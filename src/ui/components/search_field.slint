@@ -1,0 +1,36 @@
+import { Theme } from "../theme.slint";
+import { LineEdit } from "std-widgets.slint";
+
+export component SearchField inherits Rectangle {
+    in property <string> placeholder-text: "Search...";
+    in property <image> icon: @image-url("../../../assets/icons/search-light.svg");
+    in-out property <string> text <=> input.text;
+    
+    callback accepted(string);
+
+    height: 36px;
+    border-radius: Theme.card-radius-small;
+    background: Theme.card-surface;
+    border-width: 1px;
+    border-color: Theme.border-color;
+
+    // Search Icon
+    Image {
+        x: Theme.spacing-md;
+        y: (parent.height - self.height) / 2;
+        width: Theme.icon-size-md;
+        height: Theme.icon-size-md;
+        source: root.icon;
+        colorize: Theme.text-secondary;
+    }
+
+    input := LineEdit {
+        x: Theme.spacing-md + Theme.icon-size-md + Theme.spacing-sm;
+        y: 2px;
+        width: parent.width - self.x - Theme.spacing-md;
+        height: parent.height - 4px;
+        placeholder-text: root.placeholder-text;
+        font-size: 13px;
+        accepted => { root.accepted(self.text); }
+    }
+}

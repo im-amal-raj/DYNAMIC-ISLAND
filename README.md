@@ -62,12 +62,31 @@ Make sure you have the Rust compiler installed on your system. You'll also need 
    cargo run
    ```
 
-### Global Keyboard Bindings (e.g., in Niri)
-You can trigger the application launcher tab by mapping the zbus toggle command to your window manager configuration:
-```bash
-busctl --user call org.rustisland.Control /org/rustisland/Control org.rustisland.Control ToggleLauncher
+### 🌀 Niri Window Manager Specific Setup
+
+To make the Dynamic Island floating, borderless, and auto-focused on launch, add the following to your `~/.config/niri/config.kdl` file:
+
+```kdl
+// Window Rules to float, remove borders, and center the dynamic island
+window-rule {
+    match-app-id "rust-island"
+    
+    open-floating true
+    exclude-from-states-list
+    
+    border { off; }
+    focus-ring { off; }
+}
 ```
-For example, map this to `Mod+Space` inside your window manager's keyboard bindings configuration.
+
+### Global Keyboard Bindings (e.g., in Niri)
+You can bind the D-Bus trigger to a key combination (e.g., `Mod+Space`) to toggle the launcher and focus the input immediately. Add this bind to your `config.kdl`:
+
+```kdl
+binds {
+    Mod+Space { spawn "busctl" "--user" "call" "org.rustisland.Control" "/Control" "org.rustisland.Control" "ToggleLauncher"; }
+}
+```
 
 ---
 

@@ -1,0 +1,48 @@
+import { Theme } from "../theme.slint";
+import { HorizontalBox } from "std-widgets.slint";
+
+export struct TabItem {
+    id: string,
+    label: string,
+}
+
+export component PillTabs inherits Rectangle {
+    in property <[TabItem]> tabs;
+    in property <string> active-tab;
+    callback tab-selected(string);
+
+    height: 32px;
+    border-radius: self.height / 2;
+    background: Theme.card-surface;
+    border-width: 1px;
+    border-color: Theme.border-color;
+
+    HorizontalBox {
+        padding: Theme.spacing-xs;
+        spacing: Theme.spacing-xs;
+        alignment: center;
+
+        for tab in root.tabs : Rectangle {
+            width: 70px;
+            border-radius: (root.height - (Theme.spacing-xs * 2)) / 2;
+            background: root.active-tab == tab.id ? rgba(255, 255, 255, 0.1) : transparent;
+            animate background { duration: Theme.micro-duration; }
+
+            Text {
+                text: tab.label;
+                color: root.active-tab == tab.id ? Theme.text-primary : Theme.text-secondary;
+                font-size: 11px;
+                font-weight: root.active-tab == tab.id ? 700 : 500;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                width: 100%; height: 100%;
+                animate color { duration: Theme.micro-duration; }
+            }
+
+            TouchArea {
+                width: 100%; height: 100%;
+                clicked => { root.tab-selected(tab.id); }
+            }
+        }
+    }
+}

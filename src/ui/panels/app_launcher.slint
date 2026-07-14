@@ -1,0 +1,105 @@
+import { Theme } from "../theme.slint";
+import { AppItem } from "../types.slint";
+import { HorizontalBox, VerticalBox, LineEdit, ScrollView, ListView } from "std-widgets.slint";
+
+export component AppLauncherPanel inherits Rectangle {
+    in property <[AppItem]> app-results;
+    forward-focus: app_input;
+    callback search-apps(string);
+    callback launch-app(string);
+    
+    public function focus_launcher() {
+        app_input.focus();
+    }
+
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {}
+    }
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: 16px; padding-bottom: 48px;
+        spacing: 12px;
+    
+        Rectangle {
+            height: 42px;
+            border-radius: 21px;
+            background: Theme.card-surface;
+            border-width: 1px;
+            border-color: Theme.card-border;
+            
+            HorizontalBox {
+                padding: 8px; padding-left: 14px;
+                spacing: 10px;
+                Image {
+                    source: @image-url("../../../assets/icons/search.svg");
+                    width: 16px; height: 16px;
+                    colorize: Theme.text-tertiary;
+                }
+                app_input := TextInput {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: Theme.text-primary;
+                    width: 100%;
+                    vertical-alignment: center;
+                    single-line: true;
+                    init => { self.focus(); }
+                    edited => { root.search-apps(self.text); }
+                    accepted => {
+                        if root.app-results.length > 0 {
+                            root.launch-app(root.app-results[0].exec_cmd);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if root.app-results.length == 0 : Text {
+            text: "No apps match...";
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        
+        ListView {
+            for item in root.app-results : ta_app := TouchArea {
+                height: 44px;
+                clicked => { root.launch-app(item.exec_cmd); }
+                
+                Rectangle {
+                    border-radius: 12px;
+                    background: ta_app.has-hover ? Theme.card-surface-hover : Theme.card-surface;
+                    border-width: 1px;
+                    border-color: ta_app.has-hover ? Theme.card-border-hover : Theme.card-border;
+                    animate background, border-color { duration: Theme.fade-duration; }
+                    
+                    HorizontalBox {
+                        padding: 8px;
+                        spacing: 12px;
+                        alignment: start;
+                        
+                        if item.has-icon : Image {
+                            width: 28px; height: 28px;
+                            source: item.icon;
+                            image-fit: contain;
+                        }
+                        if !item.has-icon : Rectangle {
+                            width: 28px; height: 28px;
+                            border-radius: 8px;
+                            background: rgba(255, 255, 255, 0.1);
+                            Image {
+                                source: @image-url("../../../assets/icons/grid.svg");
+                                width: 14px; height: 14px;
+                                colorize: Theme.text-secondary;
+                            }
+                        }
+                        
+                        Text { text: item.name; color: Theme.text-primary; font-size: 13px; font-weight: 700; vertical-alignment: center; overflow: elide; }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,72 @@
+import { Theme } from "../../theme.slint";
+import { CircularProgress } from "../../components/circular_progress.slint";
+import { VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export component MetricCard inherits Rectangle {
+    in property <string> title;
+    in property <float> usage: 0.0;
+    in property <string> ring-commands: "";
+    in property <image> icon;
+    
+    border-radius: Theme.card-radius;
+    background: Theme.card-surface;
+    border-width: 1px;
+    border-color: Theme.border-color;
+    
+    VerticalBox {
+        padding: Theme.spacing-md;
+        spacing: Theme.spacing-sm;
+        alignment: center;
+
+        HorizontalBox {
+            padding: 0px;
+            alignment: space-between;
+
+            HorizontalBox {
+                padding: 0px;
+                spacing: Theme.spacing-xs;
+                Image {
+                    source: root.icon;
+                    width: Theme.icon-size-sm;
+                    height: Theme.icon-size-sm;
+                    colorize: Theme.text-secondary;
+                }
+                Text {
+                    text: root.title;
+                    color: Theme.text-secondary;
+                    font-size: 11px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        HorizontalBox {
+            padding: 0px;
+            alignment: space-around;
+
+            Rectangle {
+                width: 60px; height: 60px;
+                
+                CircularProgress {
+                    width: 60px; height: 60px;
+                    progress: root.usage;
+                    viewbox-size: 60px;
+                    track-commands: "M 30 3 A 27 27 0 1 1 29.99 3 Z";
+                    ring-commands: root.ring-commands;
+                    ring-width: 4px;
+                    fill-color: root.usage > 0.8 ? Theme.color-red : (root.usage > 0.5 ? Theme.color-orange : Theme.color-green);
+                }
+
+                Text {
+                    text: Math.round(root.usage * 100) + "%";
+                    color: Theme.text-primary;
+                    font-size: 13px;
+                    font-weight: 700;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+        }
+    }
+}

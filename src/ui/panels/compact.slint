@@ -1,0 +1,188 @@
+import { Theme } from "../theme.slint";
+import { IslandSection } from "../types.slint";
+import { CircularProgress } from "../components/circular_progress.slint";
+import { HorizontalBox } from "std-widgets.slint";
+
+export component CompactPanel inherits HorizontalLayout {
+    in property <bool> is-playing: false;
+    in property <bool> has-new-notification: false;
+    in property <float> cpu-usage: 0.0;
+    in property <float> memory-usage: 0.0;
+    in property <string> cpu-ring-commands: "";
+    in property <string> ram-ring-commands: "";
+    in property <string> current-date-string: "";
+    in property <string> current-time-string: "";
+    in property <string> peek-notif-summary: "";
+    in property <image> peek-notif-icon: @image-url("");
+    in property <bool> has-album-art: false;
+    in property <image> album-art: @image-url("");
+    in property <angle> art-rotation: 0deg;
+    in property <string> track-title: "";
+
+    in-out property <IslandSection> active-section;
+    in-out property <bool> right-pill-hovered: false;
+
+    alignment: center;
+    spacing: root.is-playing ? 10px : 0px;
+    
+    // Left Pill (Time/Date & CPU/Memory status)
+    Rectangle {
+        width: root.is-playing ? (parent.width - (root.right-pill-hovered ? 190px : 46px)) : parent.width;
+        height: parent.height;
+        background: Theme.glass-gradient;
+        border-color: Theme.border-gradient;
+        border-width: 1px;
+        border-radius: self.height / 2;
+        
+        animate width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+        
+        HorizontalBox {
+            alignment: center;
+            spacing: 8px;
+            
+            if !root.has-new-notification : HorizontalLayout {
+                spacing: 8px;
+                alignment: center;
+                
+                // Sleek Hardware Gauge
+                HorizontalBox {
+                    spacing: 6px;
+                    alignment: center;
+                    padding: 0px;
+
+                    cpu_ta := TouchArea {
+                        width: 48px; height: 24px;
+                        clicked => { root.active-section = IslandSection.SysMonitor; }
+                        HorizontalBox {
+                            padding: 0px;
+                            spacing: 4px;
+                            alignment: center;
+                            Image {
+                                source: @image-url("../../../assets/icons/cpu-light.svg");
+                                width: 14px; height: 14px;
+                                colorize: root.cpu-usage > 0.8 ? Theme.accent-error : Theme.text-tertiary;
+                            }
+                            Text {
+                                text: Math.round(root.cpu-usage * 100) + "%";
+                                color: Theme.text-secondary;
+                                font-size: 11px; font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                // Clock / Stats Text (Transitions on hover)
+                if !cpu_ta.has-hover : HorizontalBox {
+                    spacing: 6px;
+                    alignment: center;
+                    padding: 0px;
+                    
+                    Text {
+                        text: root.current-date-string;
+                        color: Theme.text-secondary;
+                        font-size: 11px; font-weight: 500;
+                        vertical-alignment: center;
+                    }
+                    Text {
+                        text: root.current-time-string;
+                        color: Theme.text-primary;
+                        font-size: 11px; font-weight: 800;
+                        vertical-alignment: center;
+                    }
+                }
+                
+                if cpu_ta.has-hover : Text {
+                    text: "CPU: " + Math.round(root.cpu-usage * 100) + "%  |  RAM: " + Math.round(root.memory-usage * 100) + "%";
+                    color: Theme.accent-info;
+                    font-size: 11px; font-weight: 700;
+                    vertical-alignment: center;
+                    animate color { duration: Theme.micro-duration; }
+                }
+            }
+            
+            if root.has-new-notification : HorizontalBox {
+                spacing: 6px;
+                alignment: center;
+                Image {
+                    width: 16px; height: 16px;
+                    source: root.peek-notif-icon;
+                }
+                Text {
+                    text: root.peek-notif-summary;
+                    color: Theme.accent-primary; font-size: 11px; font-weight: 700;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+    
+    // Right Pill (Detached Circle containing spinning art)
+    if root.is-playing : VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: root.right-pill-hovered ? 180px : 36px;
+            height: 36px;
+            background: Theme.glass-gradient;
+            border-color: Theme.border-gradient;
+            border-width: 1px;
+            border-radius: 18px;
+            clip: true;
+            
+            animate width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+            
+            ta_right_pill := TouchArea {
+                width: 100%; height: 100%;
+                clicked => {
+                    root.active-section = IslandSection.Media;
+                }
+            }
+            
+            // Track hover status
+            property <bool> is-hovered: ta_right_pill.has-hover;
+            changed is-hovered => {
+                root.right-pill-hovered = self.is-hovered;
+            }
+            
+            HorizontalLayout {
+                alignment: start;
+                padding-left: 5px;
+                spacing: 8px;
+                
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 26px; height: 26px; border-radius: 13px;
+                        background: rgba(255, 255, 255, 0.05);
+                        clip: true;
+                        
+                        if root.has-album-art : Image {
+                            width: 36px; height: 36px;
+                            x: -5px; y: -5px;
+                            source: root.album-art;
+                            image-fit: cover;
+                            transform-rotation: root.art-rotation;
+                        }
+                        if !root.has-album-art : Image {
+                            width: 14px; height: 14px;
+                            source: @image-url("../../../assets/music_fallback.svg");
+                            image-fit: contain;
+                            colorize: #cba6f7;
+                            x: 6px; y: 6px;
+                        }
+                    }
+                }
+                
+                if root.right-pill-hovered : VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: root.track-title;
+                        color: Theme.accent-primary; font-size: 11px; font-weight: 700;
+                        overflow: elide;
+                        width: 135px;
+                    }
+                }
+            }
+        }
+    }
+}

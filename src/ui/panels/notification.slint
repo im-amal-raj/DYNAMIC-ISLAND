@@ -1,0 +1,54 @@
+import { Theme } from "../theme.slint";
+import { IslandSection } from "../types.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+export component NotificationPanel inherits Rectangle {
+    in property <bool> has-notif-icon: false;
+    in property <image> notif-icon: @image-url("");
+    in property <string> notif-app-name: "";
+    in property <string> notif-summary: "";
+    in property <string> notif-body: "";
+    
+    in-out property <IslandSection> active-section;
+
+    clip: true;
+    
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {
+            root.active-section = IslandSection.Compact;
+        }
+    }
+    
+    VerticalBox {
+        width: 100%; height: 100%;
+        y: 0px;
+        alignment: center;
+        padding: 16px;
+        spacing: 8px;
+        
+        HorizontalBox {
+            alignment: start;
+            spacing: 8px;
+            
+            if root.has-notif-icon : Image {
+                width: 16px; height: 16px;
+                source: root.notif-icon;
+                image-fit: contain;
+            }
+            if !root.has-notif-icon : Rectangle {
+                width: 16px; height: 16px;
+                border-radius: 4px;
+                background: #0a84ff;
+                Text { text: "🔔"; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            Text { text: root.notif-app-name; color: #0a84ff; font-size: 11px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+        }
+        
+        VerticalBox {
+            spacing: 4px;
+            Text { text: root.notif-summary; color: #ffffff; font-size: 14px; font-weight: 700; overflow: elide; }
+            Text { text: root.notif-body; color: #a1a1a6; font-size: 12px; overflow: elide; wrap: word-wrap; }
+        }
+    }
+}

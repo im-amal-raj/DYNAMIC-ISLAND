@@ -1,0 +1,102 @@
+import { Theme } from "../theme.slint";
+import { IslandSection } from "../types.slint";
+import { IconButton } from "../components/icon_button.slint";
+import { HorizontalBox } from "std-widgets.slint";
+
+struct DockItemData {
+    section: IslandSection,
+    icon-light: image,
+    icon-fill: image,
+    color: color,
+}
+
+export component Dock inherits TouchArea {
+    in-out property <IslandSection> active-section;
+    callback request-window-focus();
+
+    width: 296px;
+    height: 38px;
+
+    property <[DockItemData]> items: [
+        { section: IslandSection.Media, icon-light: @image-url("../../../assets/icons/music-light.svg"), icon-fill: @image-url("../../../assets/icons/music-fill.svg"), color: Theme.color-indigo },
+        { section: IslandSection.Clipboard, icon-light: @image-url("../../../assets/icons/clipboard-light.svg"), icon-fill: @image-url("../../../assets/icons/clipboard-fill.svg"), color: Theme.color-orange },
+        { section: IslandSection.SysControls, icon-light: @image-url("../../../assets/icons/sliders-light.svg"), icon-fill: @image-url("../../../assets/icons/sliders-fill.svg"), color: Theme.color-blue },
+        { section: IslandSection.AppLauncher, icon-light: @image-url("../../../assets/icons/grid-light.svg"), icon-fill: @image-url("../../../assets/icons/grid-fill.svg"), color: Theme.color-blue },
+        { section: IslandSection.SysMonitor, icon-light: @image-url("../../../assets/icons/cpu-light.svg"), icon-fill: @image-url("../../../assets/icons/cpu-fill.svg"), color: Theme.color-teal },
+        { section: IslandSection.TodoManager, icon-light: @image-url("../../../assets/icons/check-circle-light.svg"), icon-fill: @image-url("../../../assets/icons/check-circle-fill.svg"), color: Theme.color-green },
+        { section: IslandSection.SystemTray, icon-light: @image-url("../../../assets/icons/more-horizontal-light.svg"), icon-fill: @image-url("../../../assets/icons/more-horizontal-fill.svg"), color: Theme.color-red },
+        { section: IslandSection.NotificationHistory, icon-light: @image-url("../../../assets/icons/bell-light.svg"), icon-fill: @image-url("../../../assets/icons/bell-fill.svg"), color: Theme.color-red }
+    ];
+
+    property <int> active-index: 
+        root.active-section == IslandSection.Media ? 0 :
+        (root.active-section == IslandSection.Clipboard ? 1 :
+        (root.active-section == IslandSection.SysControls ? 2 :
+        (root.active-section == IslandSection.AppLauncher ? 3 :
+        (root.active-section == IslandSection.SysMonitor ? 4 :
+        (root.active-section == IslandSection.TodoManager || root.active-section == IslandSection.CalendarView ? 5 :
+        (root.active-section == IslandSection.SystemTray ? 6 :
+        (root.active-section == IslandSection.NotificationHistory ? 7 : 5)))))));
+
+    Rectangle {
+        width: 100%;
+        height: root.has-hover ? 34px : 6px;
+        background: Theme.surface-elevated;
+        border-radius: self.height / 2;
+        border-width: 1px;
+        border-color: Theme.border-color;
+        y: parent.height - self.height;
+        clip: true;
+        
+        animate height { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+        animate border-radius { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+        
+        // Sliding Active Tab Pill Highlight (mathematically aligned)
+        if root.has-hover : Rectangle {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: root.items[root.active-index].color;
+            opacity: 0.15;
+            
+            x: 8px + (root.active-index * 36px);
+            y: (parent.height - self.height) / 2;
+            animate x { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+            animate background { duration: Theme.micro-duration; }
+        }
+
+        // Collapsed Active Tab Dot (mathematically aligned)
+        if !root.has-hover : Rectangle {
+            width: 4px;
+            height: 4px;
+            border-radius: 2px;
+            background: root.items[root.active-index].color;
+            
+            x: 20px + (root.active-index * 36px);
+            y: (parent.height - self.height) / 2;
+            animate x { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+            animate background { duration: Theme.micro-duration; }
+        }
+
+        HorizontalLayout {
+            padding-left: 6px; 
+            padding-right: 6px;
+            padding-top: 1px;
+            padding-bottom: 1px;
+            spacing: 4px;
+            opacity: root.has-hover ? 1.0 : 0.0;
+            animate opacity { duration: Theme.micro-duration; }
+            
+            for item in root.items: IconButton {
+                icon-light: item.icon-light;
+                icon-fill: item.icon-fill;
+                is-active: root.active-section == item.section || (item.section == IslandSection.TodoManager && root.active-section == IslandSection.CalendarView);
+                active-color: item.color;
+                
+                clicked => {
+                    root.active-section = item.section;
+                }
+            }
+        }
+    }
+}

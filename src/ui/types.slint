@@ -1,0 +1,69 @@
+export enum IslandSection {
+    Compact,
+    Media,
+    Clipboard,
+    Notification,
+    SysControls,
+    AppLauncher,
+    SystemTray,
+    NotificationHistory,
+    TodoManager,
+    CalendarView,
+    SysMonitor
+}
+
+export struct TaskItem {
+    id: int,
+    title: string,
+    due_date_str: string,
+    due_time_str: string,
+    is_completed: bool,
+    priority: string,
+}
+
+export struct CalendarDay {
+    text: string,
+    has_event: bool,
+}
+
+export struct WifiNetwork {
+    ssid: string,
+    signal: int,
+    connected: bool,
+}
+
+export struct BluetoothDevice {
+    name: string,
+    mac: string,
+    connected: bool,
+}
+
+export struct AudioDevice {
+    id: string,
+    name: string,
+    is_default: bool,
+}
+
+export struct ClipItem {
+    id: string,
+    text: string,
+    has_image: bool,
+    image_data: image,
+}
+
+export struct NotifItem {
+    id: string,
+    app_name: string,
+    summary: string,
+    body: string,
+    has_icon: bool,
+    icon: image,
+}
+
+export struct AppItem {
+    id: string,
+    name: string,
+    exec_cmd: string,
+    has_icon: bool,
+    icon: image,
+}

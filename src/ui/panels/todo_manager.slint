@@ -1,0 +1,388 @@
+import { Theme } from "../theme.slint";
+import { TaskItem, IslandSection } from "../types.slint";
+import { GlassCard } from "../components/glass_card.slint";
+import { HorizontalBox, VerticalBox, LineEdit, ScrollView } from "std-widgets.slint";
+
+export component TodoManagerPanel inherits Rectangle {
+    in property <string> current-month-year-label: "";
+    in property <[TaskItem]> active-tasks;
+    in-out property <string> draft-task-text: "";
+    in-out property <bool> chime-on-due: true;
+    in-out property <IslandSection> active-section;
+    in-out property <bool> in-date-picker-mode: false;
+    in-out property <length> target-width: 420px;
+    in-out property <length> target-height: 335px;
+    in-out property <string> todo-filter: "Pending";
+
+    callback toggle-task-completion(int);
+    callback play-alert-sound();
+    callback delete-task(int);
+    callback clear-completed-tasks();
+    callback add-task(string, string, string);
+    callback todo-filter-changed(string);
+
+    public function focus_input() {
+        ti_task.focus();
+    }
+
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {}
+    }
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: 16px; padding-bottom: 24px;
+        spacing: 12px;
+
+        // Header Row
+        HorizontalBox {
+            padding: 0px;
+            alignment: space-between;
+            
+            Text { 
+                text: root.current-month-year-label != "" ? root.current-month-year-label : "TODAY'S TASKS"; 
+                font-size: 13px; font-weight: 800; color: Theme.text-primary; 
+                vertical-alignment: center;
+                letter-spacing: 0.5px;
+            }
+            
+            HorizontalBox {
+                spacing: 12px;
+                padding: 0px;
+                alignment: center;
+                
+                TouchArea {
+                    clicked => {
+                        root.in-date-picker-mode = true;
+                        root.active-section = IslandSection.CalendarView;
+                        root.target-width = 380px;
+                        root.target-height = 375px;
+                    }
+                    Text { text: "📅 Calendar"; font-size: 11px; color: Theme.accent-primary; vertical-alignment: center; font-weight: 600; }
+                }
+                
+                TouchArea {
+                    clicked => { root.chime-on-due = !root.chime-on-due; }
+                    Text { 
+                        text: root.chime-on-due ? "🔊 Chime" : "🔇 Silent"; 
+                        font-size: 11px; 
+                        color: root.chime-on-due ? Theme.accent-success : Theme.text-tertiary; 
+                        vertical-alignment: center; 
+                        font-weight: 600; 
+                    }
+                }
+                
+                sweep_ta := TouchArea {
+                    clicked => { root.clear-completed-tasks(); }
+                    Text {
+                        text: "🧹 Sweep";
+                        font-size: 11px;
+                        color: Theme.accent-error;
+                        vertical-alignment: center;
+                        font-weight: 600;
+                        transform-rotation: sweep_ta.has-hover ? -15deg : 0deg;
+                        animate transform-rotation { duration: 200ms; easing: cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+                    }
+                }
+
+                TouchArea {
+                    clicked => {
+                        root.active-section = IslandSection.Compact;
+                        root.target-width = 220px;
+                        root.target-height = 42px;
+                    }
+                    Text { text: "✕ Close"; font-size: 11px; color: Theme.accent-error; vertical-alignment: center; font-weight: 600; }
+                }
+            }
+        }
+
+        // Segmented Filter Tabs (Pending vs Completed) - Premium Apple Style
+        Rectangle {
+            height: 28px;
+            border-radius: 8px;
+            background: rgba(120, 120, 128, 0.24); // Apple Material Control background
+            
+            HorizontalLayout {
+                padding: 2px;
+                spacing: 2px;
+                
+                tab_pending := TouchArea {
+                    clicked => { root.todo-filter = "Pending"; root.todo-filter-changed("Pending"); }
+                    Rectangle {
+                        border-radius: 6px;
+                        background: root.todo-filter == "Pending" ? rgba(255, 255, 255, 0.15) : transparent;
+                        border-width: 1px;
+                        border-color: root.todo-filter == "Pending" ? rgba(255, 255, 255, 0.06) : transparent;
+                        animate background, border-color { duration: 150ms; }
+                        Text { 
+                            text: "Pending"; 
+                            color: root.todo-filter == "Pending" ? #ffffff : Theme.text-secondary; 
+                            font-size: 11px; font-weight: 600; 
+                            horizontal-alignment: center; vertical-alignment: center; 
+                        }
+                    }
+                }
+                
+                tab_completed := TouchArea {
+                    clicked => { root.todo-filter = "Completed"; root.todo-filter-changed("Completed"); }
+                    Rectangle {
+                        border-radius: 6px;
+                        background: root.todo-filter == "Completed" ? rgba(255, 255, 255, 0.15) : transparent;
+                        border-width: 1px;
+                        border-color: root.todo-filter == "Completed" ? rgba(255, 255, 255, 0.06) : transparent;
+                        animate background, border-color { duration: 150ms; }
+                        Text { 
+                            text: "Completed"; 
+                            color: root.todo-filter == "Completed" ? #ffffff : Theme.text-secondary; 
+                            font-size: 11px; font-weight: 600; 
+                            horizontal-alignment: center; vertical-alignment: center; 
+                        }
+                    }
+                }
+            }
+        }
+
+        // Task Creator Input
+        VerticalBox {
+            spacing: 8px;
+            padding: 0px;
+
+            Rectangle {
+                height: 38px;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.04);
+                border-width: 1px;
+                border-color: ti_task.has-focus ? Theme.accent-primary : rgba(255, 255, 255, 0.08);
+                animate border-color { duration: Theme.micro-duration; }
+                
+                HorizontalBox {
+                    padding: 8px;
+                    padding-left: 12px;
+                    spacing: 8px;
+                    
+                    Text { text: "+"; color: Theme.accent-primary; font-size: 16px; font-weight: 700; vertical-alignment: center; }
+                    
+                    Rectangle {
+                        width: 100%; height: 100%;
+                        
+                        if ti_task.text == "" : Text {
+                            text: "Add task (e.g. 'Buy milk @tomorrow !high')";
+                            color: Theme.text-tertiary;
+                            font-size: 12px;
+                            font-weight: 500;
+                            vertical-alignment: center;
+                            width: 100%;
+                            overflow: elide;
+                        }
+                        
+                        ti_task := TextInput {
+                            text: root.draft-task-text;
+                            font-size: 13px;
+                            font-weight: 500;
+                            color: Theme.text-primary;
+                            single-line: true;
+                            vertical-alignment: center;
+                            width: 100%;
+                            height: 100%;
+                            edited => {
+                                root.draft-task-text = self.text;
+                            }
+                            accepted => {
+                                if self.text != "" {
+                                    root.add-task(self.text, "today", "Medium");
+                                    root.draft-task-text = "";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Smart Preset Chips
+            ScrollView {
+                height: 24px;
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    
+                    TouchArea {
+                        clicked => { root.draft-task-text = root.draft-task-text + " @today"; ti_task.focus(); }
+                        Rectangle {
+                            border-radius: 6px; background: rgba(255, 255, 255, 0.05);
+                            border-width: 1px; border-color: parent.has-hover ? Theme.accent-info : transparent;
+                            HorizontalLayout {
+                                padding-left: 8px; padding-right: 8px; padding-top: 4px; padding-bottom: 4px;
+                                Text { text: "📅 Today"; font-size: 10px; color: Theme.accent-info; font-weight: 600; }
+                            }
+                        }
+                    }
+                    TouchArea {
+                        clicked => { root.draft-task-text = root.draft-task-text + " @tomorrow"; ti_task.focus(); }
+                        Rectangle {
+                            border-radius: 6px; background: rgba(255, 255, 255, 0.05);
+                            border-width: 1px; border-color: parent.has-hover ? Theme.accent-warning : transparent;
+                            HorizontalLayout {
+                                padding-left: 8px; padding-right: 8px; padding-top: 4px; padding-bottom: 4px;
+                                Text { text: "📆 Tomorrow"; font-size: 10px; color: Theme.accent-warning; font-weight: 600; }
+                            }
+                        }
+                    }
+                    TouchArea {
+                        clicked => { root.draft-task-text = root.draft-task-text + " !high"; ti_task.focus(); }
+                        Rectangle {
+                            border-radius: 6px; background: rgba(255, 255, 255, 0.05);
+                            border-width: 1px; border-color: parent.has-hover ? Theme.accent-error : transparent;
+                            HorizontalLayout {
+                                padding-left: 8px; padding-right: 8px; padding-top: 4px; padding-bottom: 4px;
+                                Text { text: "⚡ High Priority"; font-size: 10px; color: Theme.accent-error; font-weight: 600; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Tasks List
+        ScrollView {
+            height: 180px;
+            VerticalBox {
+                spacing: 8px;
+                alignment: start;
+                padding: 0px;
+                
+                if root.active-tasks.length == 0 : Rectangle {
+                    height: 60px;
+                    width: 100%;
+                    
+                    VerticalBox {
+                        alignment: center;
+                        spacing: 4px;
+                        Text { text: "✨"; font-size: 16px; horizontal-alignment: center; }
+                        Text { text: "All caught up!"; color: Theme.text-secondary; font-size: 12px; font-weight: 600; horizontal-alignment: center; }
+                    }
+                }
+                
+                for task in root.active-tasks : GlassCard {
+                    height: 42px;
+                    interactive: true;
+                    
+                    HorizontalBox {
+                        padding: 0px;
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 12px;
+                            alignment: start;
+                            
+                            ta_check := TouchArea {
+                                width: 18px; height: 18px;
+                                clicked => { 
+                                    root.toggle-task-completion(task.id);
+                                    root.play-alert-sound();
+                                }
+                                
+                                property <float> checkbox-scale: self.pressed ? 0.8 : (self.has-hover ? 1.15 : 1.0);
+                                animate checkbox-scale { duration: 100ms; }
+                                
+                                Rectangle {
+                                    width: 18px * parent.checkbox-scale;
+                                    height: 18px * parent.checkbox-scale;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                    border-radius: self.width / 2;
+                                    border-width: 2px;
+                                    border-color: task.is_completed ? Theme.accent-success : (ta_check.has-hover ? #ffffff : rgba(255, 255, 255, 0.3));
+                                    background: task.is_completed ? Theme.accent-success : transparent;
+                                    animate background { duration: 150ms; }
+                                    animate border-color { duration: 150ms; }
+                                    
+                                    if task.is_completed : Path {
+                                        width: 8px; height: 6px;
+                                        stroke: #ffffff;
+                                        stroke-width: 2px;
+                                        commands: "M 0 3 L 3 6 L 8 0";
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+                                }
+                            }
+                            
+                            // Text with strike-through line + metadata
+                            Rectangle {
+                                height: 20px;
+                                width: 280px;
+                                y: (parent.height - self.height) / 2;
+                                
+                                box := HorizontalBox {
+                                    padding: 0px; spacing: 8px; alignment: start;
+                                    
+                                    // Priority Badge
+                                    Rectangle {
+                                        border-radius: 4px;
+                                        background: task.priority == "High" ? rgba(248, 113, 113, 0.15) : (task.priority == "Low" ? rgba(96, 165, 250, 0.15) : rgba(251, 191, 36, 0.15));
+                                        border-width: 1px;
+                                        border-color: task.priority == "High" ? rgba(248, 113, 113, 0.3) : (task.priority == "Low" ? rgba(96, 165, 250, 0.3) : rgba(251, 191, 36, 0.3));
+                                        
+                                        HorizontalLayout {
+                                            padding-left: 4px; padding-right: 4px; padding-top: 2px; padding-bottom: 2px;
+                                            Text {
+                                                text: task.priority == "High" ? "High" : (task.priority == "Low" ? "Low" : "Med");
+                                                font-size: 8px; font-weight: 800;
+                                                color: task.priority == "High" ? Theme.accent-error : (task.priority == "Low" ? Theme.accent-info : Theme.accent-warning);
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                    
+                                    txt := Text { 
+                                        text: task.title; 
+                                        color: task.is_completed ? Theme.text-tertiary : Theme.text-primary;
+                                        font-size: 13px;
+                                        font-weight: 500;
+                                        vertical-alignment: center;
+                                        animate color { duration: 150ms; }
+                                    }
+                                    
+                                    Text {
+                                        text: task.due_date_str != "" && task.due_date_str != "yyyy-mm-dd" ? task.due_date_str : "";
+                                        color: Theme.text-tertiary; font-size: 10px; font-weight: 500; vertical-alignment: center;
+                                    }
+                                }
+                                
+                                // Strike-through line rectangle
+                                Rectangle {
+                                    x: box.x + txt.x;
+                                    y: parent.height / 2;
+                                    width: task.is_completed ? txt.width : 0px;
+                                    height: 1.5px;
+                                    background: Theme.text-tertiary;
+                                    animate width { duration: 200ms; easing: ease-in-out; }
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: end;
+                            
+                            if !task.is_completed : ta_delete := TouchArea {
+                                clicked => { root.delete-task(task.id); }
+                                Text { 
+                                    text: "✕"; 
+                                    font-size: 12px; 
+                                    color: ta_delete.has-hover ? Theme.accent-error : Theme.text-tertiary;
+                                    font-weight: 700;
+                                    vertical-alignment: center;
+                                    animate color { duration: 150ms; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

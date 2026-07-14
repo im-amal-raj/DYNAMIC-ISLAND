@@ -1,0 +1,108 @@
+import { Theme } from "../theme.slint";
+import { CalendarDay, IslandSection } from "../types.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+export component CalendarViewPanel inherits Rectangle {
+    in property <string> current-month-year-label: "";
+    in property <[CalendarDay]> calendar-days-grid;
+    in-out property <string> selected-date-filter: "";
+    in-out property <bool> in-date-picker-mode: false;
+    in-out property <IslandSection> active-section;
+    in-out property <length> target-width: 380px;
+    in-out property <length> target-height: 375px;
+
+    callback change-month-offset(int);
+    callback filter-tasks-by-date(string);
+    callback date-selected(string);
+
+    TouchArea {
+        width: 100%; height: 100%;
+        clicked => {}
+    }
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: 16px; padding-bottom: 48px;
+        spacing: 10px;
+
+        HorizontalBox {
+            alignment: space-between;
+            HorizontalBox {
+                spacing: 12px;
+                TouchArea {
+                    clicked => { root.change-month-offset(-1); }
+                    Text { text: "◀"; font-size: 12px; color: #8e8e93; vertical-alignment: center; }
+                }
+                Text { text: root.current-month-year-label; font-size: 12px; font-weight: 700; color: #ffffff; vertical-alignment: center; }
+                TouchArea {
+                    clicked => { root.change-month-offset(1); }
+                    Text { text: "▶"; font-size: 12px; color: #8e8e93; vertical-alignment: center; }
+                }
+            }
+            TouchArea {
+                clicked => {
+                    root.active-section = IslandSection.TodoManager;
+                    root.target-width = 420px;
+                    root.target-height = 335px;
+                }
+                Text { text: "📋 Back to List"; font-size: 10px; color: #ff9500; vertical-alignment: center; }
+            }
+        }
+
+        HorizontalBox {
+            alignment: space-around;
+            Text { text: "S"; font-size: 10px; color: #8e8e93; }
+            Text { text: "M"; font-size: 10px; color: #8e8e93; }
+            Text { text: "T"; font-size: 10px; color: #8e8e93; }
+            Text { text: "W"; font-size: 10px; color: #8e8e93; }
+            Text { text: "T"; font-size: 10px; color: #8e8e93; }
+            Text { text: "F"; font-size: 10px; color: #8e8e93; }
+            Text { text: "S"; font-size: 10px; color: #8e8e93; }
+        }
+
+        Rectangle {
+            background: #121214;
+            border-radius: 12px;
+            height: 220px;
+
+            GridLayout {
+                padding: 8px;
+                spacing: 4px;
+                for day[idx] in root.calendar-days-grid : Rectangle {
+                    row: floor(idx / 7);
+                    col: mod(idx, 7);
+                    width: 42px;
+                    height: 34px;
+                    background: day.text == "" ? #00000000 : (root.selected-date-filter == day.text ? #0a84ff : #1c1c1e);
+                    border-radius: 6px;
+
+                    TouchArea {
+                        clicked => {
+                            if day.text != "" {
+                                root.date-selected(day.text);
+                            }
+                        }
+                        VerticalBox {
+                            alignment: center;
+                            spacing: 2px;
+                            Text {
+                                text: day.text;
+                                color: #ffffff;
+                                font-size: 11px;
+                                horizontal-alignment: center;
+                            }
+                            if day.has-event : HorizontalBox {
+                                alignment: center;
+                                Rectangle {
+                                    width: 4px; height: 4px;
+                                    border-radius: 2px;
+                                    background: #ff9500;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

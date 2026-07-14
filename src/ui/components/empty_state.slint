@@ -1,0 +1,28 @@
+import { Theme } from "../theme.slint";
+import { VerticalBox } from "std-widgets.slint";
+
+export component EmptyState inherits Rectangle {
+    in property <image> icon;
+    in property <string> message: "No items";
+
+    VerticalBox {
+        alignment: center;
+        spacing: Theme.spacing-sm;
+
+        Image {
+            source: root.icon;
+            width: Theme.icon-size-lg;
+            height: Theme.icon-size-lg;
+            colorize: Theme.text-tertiary;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.message;
+            color: Theme.text-secondary;
+            font-size: 13px;
+            font-weight: 500;
+            horizontal-alignment: center;
+        }
+    }
+}

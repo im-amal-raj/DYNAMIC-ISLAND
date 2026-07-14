@@ -1,0 +1,102 @@
+import { Theme } from "../../theme.slint";
+import { BluetoothDevice } from "../../types.slint";
+import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
+import { SectionHeader } from "../../components/section_header.slint";
+import { EmptyState } from "../../components/empty_state.slint";
+
+export component BluetoothTab inherits Rectangle {
+    in property <bool> bluetooth-enabled: false;
+    in property <[BluetoothDevice]> bluetooth-devices;
+    
+    callback toggle-bluetooth(bool);
+    callback scan-bluetooth();
+    callback disconnect-bluetooth(string);
+    callback connect-bluetooth(string);
+
+    VerticalBox {
+        spacing: Theme.spacing-sm;
+        padding: 0px;
+
+        SectionHeader {
+            title: root.bluetooth-enabled ? "Bluetooth: On" : "Bluetooth: Off";
+            title-color: root.bluetooth-enabled ? Theme.color-blue : Theme.text-secondary;
+            
+            HorizontalBox {
+                spacing: Theme.spacing-sm;
+                padding: 0px;
+                
+                TouchArea {
+                    width: 50px; height: 20px;
+                    clicked => { root.toggle-bluetooth(!root.bluetooth-enabled); }
+                    Rectangle {
+                        width: 100%; height: 100%; border-radius: 10px;
+                        background: root.bluetooth-enabled ? Theme.color-blue : Theme.card-surface;
+                        Text { text: root.bluetooth-enabled ? "Disable" : "Enable"; color: root.bluetooth-enabled ? #ffffff : Theme.text-primary; font-size: 10px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                    }
+                }
+                
+                if root.bluetooth-enabled : TouchArea {
+                    width: 50px; height: 20px;
+                    clicked => { root.scan-bluetooth(); }
+                    Rectangle {
+                        width: 100%; height: 100%; border-radius: 10px;
+                        background: Theme.card-surface;
+                        Text { text: "Scan"; color: Theme.text-primary; font-size: 10px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                    }
+                }
+            }
+        }
+
+        if !root.bluetooth-enabled : EmptyState {
+            height: 120px;
+            icon: @image-url("../../../../assets/icons/bluetooth-light.svg"); // Note: Assuming this exists, fallback is text if not
+            message: "Bluetooth is turned off";
+        }
+
+        if root.bluetooth-enabled : ScrollView {
+            height: 140px;
+            VerticalBox {
+                spacing: 8px;
+                padding: 0px;
+                
+                for device in root.bluetooth-devices : Rectangle {
+                    height: 48px;
+                    border-radius: Theme.card-radius-small;
+                    background: device.connected ? rgba(10, 132, 255, 0.15) : Theme.card-surface;
+                    border-width: 1px;
+                    border-color: device.connected ? rgba(10, 132, 255, 0.3) : Theme.border-color;
+                    
+                    TouchArea {
+                        clicked => {
+                            if device.connected {
+                                root.disconnect-bluetooth(device.mac);
+                            } else {
+                                root.connect-bluetooth(device.mac);
+                            }
+                        }
+                    }
+                    
+                    HorizontalBox {
+                        padding: Theme.spacing-md;
+                        alignment: space-between;
+                        
+                        VerticalBox {
+                            spacing: 2px;
+                            padding: 0px;
+                            alignment: center;
+                            Text { text: device.name; color: Theme.text-primary; font-size: 13px; font-weight: device.connected ? 700 : 500; }
+                        }
+                        
+                        HorizontalBox {
+                            spacing: 8px;
+                            padding: 0px;
+                            alignment: end;
+                            
+                            if device.connected : Text { text: "Connected"; color: Theme.color-blue; font-size: 11px; font-weight: 700; vertical-alignment: center; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

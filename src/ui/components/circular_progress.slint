@@ -1,0 +1,37 @@
+import { Theme } from "../theme.slint";
+
+export component CircularProgress inherits Rectangle {
+    in property <float> progress; // 0.0 to 1.0
+    in property <color> track-color: Theme.border-color;
+    in property <color> fill-color: Theme.accent-primary;
+    in property <length> ring-width: 1.8px;
+    in property <string> ring-commands: ""; // Passed from Rust due to Slint arc path limitations
+    
+    // The visual size of the SVG viewbox (must match the commands)
+    in property <length> viewbox-size: 24px;
+    in property <string> track-commands: "M 12 1 A 11 11 0 1 1 11.99 1 Z"; // Default 24x24 track
+    
+    width: 24px;
+    height: 24px;
+    
+    // Background Track
+    Path {
+        width: 100%; height: 100%;
+        viewbox-width: root.viewbox-size / 1px; viewbox-height: root.viewbox-size / 1px;
+        stroke: root.track-color;
+        stroke-width: root.ring-width;
+        commands: root.track-commands;
+    }
+    
+    // Foreground Progress Ring
+    Path {
+        width: 100%; height: 100%;
+        viewbox-width: root.viewbox-size / 1px; viewbox-height: root.viewbox-size / 1px;
+        stroke: root.fill-color;
+        stroke-width: root.ring-width;
+        commands: root.ring-commands;
+        animate stroke { duration: Theme.standard-duration; }
+    }
+    
+    @children
+}

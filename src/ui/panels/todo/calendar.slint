@@ -1,0 +1,113 @@
+import { Theme } from "../../theme.slint";
+import { CalendarDay, IslandSection } from "../../types.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { IconButton } from "../../components/icon_button.slint";
+import { SectionHeader } from "../../components/section_header.slint";
+
+export component CalendarView inherits Rectangle {
+    in property <string> current-month-year-label: "";
+    in property <[CalendarDay]> calendar-days-grid;
+    in-out property <string> selected-date-filter: "";
+    in-out property <bool> in-date-picker-mode: false;
+    
+    callback change-month-offset(int);
+    callback date-selected(string);
+    callback go-back();
+
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: Theme.panel-padding; 
+        padding-bottom: Theme.panel-padding-bottom;
+        spacing: Theme.spacing-md;
+
+        HorizontalBox {
+            padding: 0px;
+            alignment: space-between;
+            
+            HorizontalBox {
+                spacing: Theme.spacing-sm;
+                padding: 0px;
+                
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.change-month-offset(-1); }
+                    Text { text: "◀"; font-size: 12px; color: parent.has-hover ? Theme.text-primary : Theme.text-secondary; vertical-alignment: center; }
+                }
+                Text { text: root.current-month-year-label; font-size: 13px; font-weight: 700; color: Theme.text-primary; vertical-alignment: center; }
+                TouchArea {
+                    width: 24px; height: 24px;
+                    clicked => { root.change-month-offset(1); }
+                    Text { text: "▶"; font-size: 12px; color: parent.has-hover ? Theme.text-primary : Theme.text-secondary; vertical-alignment: center; }
+                }
+            }
+            
+            TouchArea {
+                clicked => { root.go-back(); }
+                Text { text: "Back to List"; font-size: 11px; color: Theme.color-blue; vertical-alignment: center; }
+            }
+        }
+
+        HorizontalBox {
+            alignment: space-around;
+            padding: 0px;
+            Text { text: "S"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+            Text { text: "M"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+            Text { text: "T"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+            Text { text: "W"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+            Text { text: "T"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+            Text { text: "F"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+            Text { text: "S"; font-size: 11px; color: Theme.text-secondary; font-weight: 600; }
+        }
+
+        Rectangle {
+            background: Theme.surface-elevated;
+            border-radius: Theme.card-radius;
+            height: 220px;
+            border-width: 1px;
+            border-color: Theme.border-color;
+
+            GridLayout {
+                padding: Theme.spacing-sm;
+                spacing: Theme.spacing-xs;
+                for day[idx] in root.calendar-days-grid : Rectangle {
+                    row: floor(idx / 7);
+                    col: mod(idx, 7);
+                    width: 42px;
+                    height: 34px;
+                    background: day.text == "" ? transparent : (root.selected-date-filter == day.text ? Theme.color-blue : (ta.has-hover ? Theme.card-surface-hover : transparent));
+                    border-radius: Theme.card-radius-small;
+
+                    ta := TouchArea {
+                        clicked => {
+                            if day.text != "" {
+                                root.date-selected(day.text);
+                            }
+                        }
+                        VerticalBox {
+                            alignment: center;
+                            spacing: 2px;
+                            padding: 0px;
+                            
+                            Text {
+                                text: day.text;
+                                color: day.text == "" ? transparent : (root.selected-date-filter == day.text ? #000000 : Theme.text-primary);
+                                font-size: 13px;
+                                font-weight: root.selected-date-filter == day.text ? 700 : 500;
+                                horizontal-alignment: center;
+                            }
+                            if day.has-event : HorizontalBox {
+                                alignment: center;
+                                padding: 0px;
+                                Rectangle {
+                                    width: 4px; height: 4px;
+                                    border-radius: 2px;
+                                    background: root.selected-date-filter == day.text ? #000000 : Theme.color-orange;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -10,9 +10,5 @@ export component IslandPill inherits Rectangle {
     border-radius: self.height > 60px ? 24px : self.height / 2;
     animate border-radius { duration: Theme.spring-duration; easing: Theme.spring-easing; }
     
-    // Smooth layout transitions
-    animate width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
-    animate height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
-    
     @children
 }

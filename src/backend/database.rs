@@ -7,6 +7,10 @@ use chrono::{Datelike, Local, NaiveDate};
 
 use crate::{TaskItem, CalendarDay, UltimateDynamicIsland};
 
+fn default_priority() -> String {
+    "Medium".to_string()
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SavedTask {
     pub id: i32,
@@ -14,6 +18,8 @@ pub struct SavedTask {
     pub due_date_str: String,
     pub due_time_str: String,
     pub is_completed: bool,
+    #[serde(default = "default_priority")]
+    pub priority: String,
 }
 
 pub struct TaskDatabase {
@@ -59,6 +65,7 @@ pub fn update_ui_task_model(ui: &UltimateDynamicIsland, items: &[SavedTask]) {
         due_date_str: SharedString::from(&t.due_date_str),
         due_time_str: SharedString::from(&t.due_time_str),
         is_completed: t.is_completed,
+        priority: SharedString::from(&t.priority),
     }).collect();
     let model = Rc::new(VecModel::from(slint_items));
     ui.set_active_tasks(ModelRc::from(model));
@@ -101,3 +108,43 @@ pub fn refresh_calendar_grid(ui: &UltimateDynamicIsland, db: &TaskDatabase) {
     let model = Rc::new(VecModel::from(days_vector));
     ui.set_calendar_days_grid(ModelRc::from(model));
 }
+
+pub fn create_refresh_tasks_ui(
+    ui_weak: slint::Weak<UltimateDynamicIsland>,
+    db_container: std::sync::Arc<std::sync::Mutex<TaskDatabase>>,
+    selected_date_filter: std::sync::Arc<std::sync::Mutex<String>>,
+    todo_tab_filter: std::sync::Arc<std::sync::Mutex<String>>,
+) -> impl Fn() + Send + Sync + 'static {
+    move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            let db = db_container.lock().unwrap();
+            let sel_date = selected_date_filter.lock().unwrap().clone();
+            let tab_filter = todo_tab_filter.lock().unwrap().clone();
+            
+            let filtered_subset: Vec<SavedTask> = db.items.iter()
+                .filter(|t| {
+                    let date_match = if sel_date.is_empty() {
+                        let current_date = chrono::Local::now();
+                        let today_str = format!("{:04}-{:02}-{:02}", current_date.year(), current_date.month(), current_date.day());
+                        t.due_date_str == today_str
+                    } else {
+                        let day_num: u32 = sel_date.parse().unwrap_or(0);
+                        let target_str = format!("{:04}-{:02}-{:02}", db.view_year, db.view_month, day_num);
+                        t.due_date_str == target_str
+                    };
+                    
+                    let tab_match = match tab_filter.as_str() {
+                        "Pending" => !t.is_completed,
+                        "Completed" => t.is_completed,
+                        _ => true,
+                    };
+                    
+                    date_match && tab_match
+                })
+                .cloned()
+                .collect();
+            update_ui_task_model(&ui, &filtered_subset);
+        }
+    }
+}
+

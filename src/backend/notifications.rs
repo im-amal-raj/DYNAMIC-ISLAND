@@ -194,3 +194,32 @@ impl NotificationServer {
         });
     }
 }
+
+pub fn setup_notifications(ui_handle: slint::Weak<UltimateDynamicIsland>) {
+    tokio::spawn(async move {
+        let notif_server = NotificationServer { 
+            ui_handle,
+            rt_handle: tokio::runtime::Handle::current(),
+        };
+        let _conn = zbus::ConnectionBuilder::session()
+            .expect("Failed to get DBus session")
+            .name("org.freedesktop.Notifications")
+            .expect("Failed to claim name")
+            .serve_at("/org/freedesktop/Notifications", notif_server)
+            .expect("Failed to serve");
+            
+        match _conn.build().await {
+            Ok(conn) => {
+                log::info!("Successfully registered notification server on DBus");
+                crate::backend::log_to_file("Notif Init: Successfully registered notification server on DBus");
+                // Keep the connection and the name alive
+                let _keep_alive = conn;
+                std::future::pending::<()>().await;
+            }
+            Err(e) => {
+                log::warn!("Failed to register DBus notification server (another daemon might be running): {:?}", e);
+                crate::backend::log_to_file(&format!("Notif Init: Failed to register DBus notification server: {:?}", e));
+            }
+        }
+    });
+}

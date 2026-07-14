@@ -1,0 +1,114 @@
+import { Theme } from "../../theme.slint";
+import { AudioDevice } from "../../types.slint";
+import { HorizontalBox, VerticalBox, ScrollView, ListView } from "std-widgets.slint";
+import { SectionHeader } from "../../components/section_header.slint";
+import { SliderControl } from "../../components/slider_control.slint";
+
+export component AudioTab inherits Rectangle {
+    in property <float> volume-level: 0.0;
+    in property <[AudioDevice]> audio-sinks;
+    in property <float> mic-level: 0.0;
+    in property <[AudioDevice]> audio-sources;
+    
+    callback set-volume(float);
+    callback set-mic-volume(float);
+    callback set-default-audio(string);
+
+    VerticalBox {
+        spacing: Theme.spacing-md;
+        padding: 0px;
+
+        // Output Volume
+        VerticalBox {
+            spacing: Theme.spacing-sm;
+            padding: 0px;
+
+            SectionHeader {
+                title: "Output Volume";
+            }
+            
+            SliderControl {
+                icon-source: @image-url("../../../../assets/icons/volume-2-light.svg");
+                icon-color: Theme.color-indigo;
+                value: root.volume-level;
+                active-gradient: @linear-gradient(90deg, #0a84ff 0%, #bf5af2 100%);
+                changed(val) => { root.set-volume(val); }
+            }
+            
+            // Audio Sinks List
+            ScrollView {
+                height: 80px;
+                VerticalBox {
+                    spacing: 4px;
+                    padding: 0px;
+                    for dev in root.audio-sinks : Rectangle {
+                        height: 36px;
+                        border-radius: Theme.card-radius-small;
+                        background: dev.is_default ? rgba(191, 90, 242, 0.15) : Theme.card-surface;
+                        border-width: 1px;
+                        border-color: dev.is_default ? rgba(191, 90, 242, 0.3) : Theme.border-color;
+                        
+                        TouchArea {
+                            clicked => { root.set-default-audio(dev.id); }
+                        }
+                        
+                        HorizontalBox {
+                            padding-left: Theme.spacing-sm;
+                            padding-right: Theme.spacing-sm;
+                            alignment: space-between;
+                            Text { text: dev.name; color: Theme.text-primary; font-size: 11px; vertical-alignment: center; }
+                            if dev.is_default : Text { text: "Active"; color: Theme.color-indigo; font-size: 10px; font-weight: 700; vertical-alignment: center; }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Input Volume
+        VerticalBox {
+            spacing: Theme.spacing-sm;
+            padding: 0px;
+
+            SectionHeader {
+                title: "Input Volume";
+            }
+            
+            SliderControl {
+                icon-source: @image-url("../../../../assets/icons/mic-light.svg");
+                icon-color: Theme.color-orange;
+                value: root.mic-level;
+                active-gradient: @linear-gradient(90deg, #ff9f0a 0%, #ff453a 100%);
+                changed(val) => { root.set-mic-volume(val); }
+            }
+            
+            // Audio Sources List
+            ScrollView {
+                height: 80px;
+                viewport-height: root.audio-sources.length * 40px;
+                VerticalBox {
+                    padding: 0px;
+                    spacing: 4px;
+                    for dev in root.audio-sources : Rectangle {
+                        height: 36px;
+                        border-radius: Theme.card-radius-small;
+                        background: dev.is_default ? rgba(255, 159, 10, 0.15) : Theme.card-surface;
+                        border-width: 1px;
+                        border-color: dev.is_default ? rgba(255, 159, 10, 0.3) : Theme.border-color;
+                    
+                        TouchArea {
+                            // Note: Might need set-default-input in the future
+                        }
+                        
+                        HorizontalBox {
+                            padding-left: Theme.spacing-sm;
+                            padding-right: Theme.spacing-sm;
+                            alignment: space-between;
+                            Text { text: dev.name; color: Theme.text-primary; font-size: 11px; vertical-alignment: center; }
+                            if dev.is_default : Text { text: "Active"; color: Theme.color-orange; font-size: 10px; font-weight: 700; vertical-alignment: center; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
