@@ -1,0 +1,79 @@
+import { Theme } from "../theme.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+// PURPOSE: Reusable confirmation overlay for destructive actions
+// INPUTS: title, message, confirm-text, is-destructive, is-visible
+// USED BY: system_tray
+export component ConfirmOverlay inherits Rectangle {
+    in property <string> title: "Are you sure?";
+    in property <string> message: "This action cannot be undone.";
+    in property <string> confirm-text: "Confirm";
+    in property <bool> is-destructive: true;
+    in-out property <bool> is-visible: false;
+    
+    callback confirmed();
+    callback cancelled();
+    
+    width: 100%; height: 100%;
+    opacity: root.is-visible ? 1.0 : 0.0;
+    visible: self.opacity > 0.0;
+    animate opacity { duration: Theme.standard-duration; easing: Theme.standard-easing; }
+    
+    // Backdrop blur / overlay
+    Rectangle {
+        width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        TouchArea { clicked => { root.cancelled(); } }
+    }
+    
+    VerticalBox {
+        alignment: center;
+        Rectangle {
+            width: 220px;
+            border-radius: Theme.card-radius;
+            background: Theme.surface-elevated;
+            border-width: 1px;
+            border-color: Theme.border-color;
+            clip: true;
+            
+            VerticalBox {
+                padding: Theme.spacing-lg;
+                spacing: Theme.spacing-md;
+                
+                VerticalBox {
+                    spacing: Theme.spacing-xs;
+                    alignment: center;
+                    Text { text: root.title; color: Theme.text-primary; font-weight: 700; font-size: 14px; horizontal-alignment: center; }
+                    Text { text: root.message; color: Theme.text-secondary; font-size: 11px; horizontal-alignment: center; wrap: word-wrap; }
+                }
+                
+                HorizontalBox {
+                    spacing: Theme.spacing-sm;
+                    padding: 0px;
+                    
+                    Rectangle {
+                        border-radius: Theme.card-radius-small;
+                        background: ta_cancel.has-hover ? rgba(255,255,255,0.1) : rgba(255,255,255,0.05);
+                        height: 32px;
+                        Text { text: "Cancel"; color: Theme.text-primary; font-weight: 600; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+                        ta_cancel := TouchArea { clicked => { root.cancelled(); } }
+                    }
+                    
+                    Rectangle {
+                        border-radius: Theme.card-radius-small;
+                        background: ta_confirm.has-hover ? (root.is-destructive ? Theme.color-red : Theme.color-blue) : (root.is-destructive ? rgba(255, 69, 58, 0.2) : rgba(10, 132, 255, 0.2));
+                        border-width: 1px;
+                        border-color: root.is-destructive ? Theme.color-red : Theme.color-blue;
+                        height: 32px;
+                        Text { 
+                            text: root.confirm-text; 
+                            color: ta_confirm.has-hover ? Theme.text-primary : (root.is-destructive ? Theme.color-red : Theme.color-blue); 
+                            font-weight: 700; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; 
+                        }
+                        ta_confirm := TouchArea { clicked => { root.confirmed(); } }
+                    }
+                }
+            }
+        }
+    }
+}

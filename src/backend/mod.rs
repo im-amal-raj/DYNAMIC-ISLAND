@@ -11,6 +11,7 @@ pub mod clipboard;
 pub mod notifications;
 pub mod tray;
 pub mod handlers;
+pub mod niri;
 
 pub fn log_to_file(msg: &str) {
     use std::fs::OpenOptions;

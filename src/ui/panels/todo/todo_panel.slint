@@ -50,19 +50,29 @@ export component TodoPanel inherits Rectangle {
                 alignment: end;
                 
                 TouchArea {
-                    width: 60px; height: 20px;
+                    width: 70px; height: 32px;
                     clicked => { root.chime-on-due = !root.chime-on-due; }
-                    Text { 
-                        text: root.chime-on-due ? "🔊 Chime" : "🔇 Silent"; 
-                        font-size: 11px; 
-                        color: root.chime-on-due ? Theme.color-green : Theme.text-tertiary; 
-                        vertical-alignment: center; 
-                        font-weight: 600; 
+                    HorizontalBox {
+                        spacing: 4px; padding: 0px; alignment: center;
+                        VerticalLayout {
+                            alignment: center;
+                            Image { width: 14px; height: 14px; source: @image-url("../../../../assets/icons/volume-2-light.svg"); colorize: root.chime-on-due ? Theme.color-green : Theme.text-tertiary; }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Text { 
+                                text: root.chime-on-due ? "Chime" : "Silent"; 
+                                font-size: 11px; 
+                                color: root.chime-on-due ? Theme.color-green : Theme.text-tertiary; 
+                                vertical-alignment: center; 
+                                font-weight: 600; 
+                            }
+                        }
                     }
                 }
                 
                 TouchArea {
-                    width: 40px; height: 20px;
+                    width: 40px; height: 32px;
                     clicked => { root.clear-completed-tasks(); }
                     Text {
                         text: "Clear";

@@ -1,8 +1,7 @@
 import { Theme } from "../../theme.slint";
 import { WifiNetwork } from "../../types.slint";
-import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
-import { SectionHeader } from "../../components/section_header.slint";
-import { EmptyState } from "../../components/empty_state.slint";
+import { BaseDeviceListTab } from "base_device_list_tab.slint";
+import { ListItem } from "../../components/list_item.slint";
 
 export component WifiTab inherits Rectangle {
     in property <bool> wifi-enabled: false;
@@ -13,90 +12,29 @@ export component WifiTab inherits Rectangle {
     callback disconnect-wifi();
     callback connect-wifi(string, string);
 
-    VerticalBox {
-        spacing: Theme.spacing-sm;
-        padding: 0px;
-
-        SectionHeader {
-            title: root.wifi-enabled ? "Wi-Fi: On" : "Wi-Fi: Off";
-            title-color: root.wifi-enabled ? Theme.color-green : Theme.text-secondary;
+    BaseDeviceListTab {
+        title: "Wi-Fi";
+        status-text: root.wifi-enabled ? "On" : "Off";
+        is-enabled: root.wifi-enabled;
+        is-empty: root.wifi-networks.length == 0;
+        empty-icon: @image-url("../../../../assets/icons/wifi-light.svg");
+        empty-message: "No networks found";
+        
+        toggled(val) => { root.toggle-wifi(val); }
+        
+        for net in root.wifi-networks : ListItem {
+            icon: @image-url("../../../../assets/icons/wifi-light.svg");
+            title: net.ssid;
+            subtitle: "Signal: " + net.signal + "%";
+            status-text: net.connected ? "Connected" : "";
+            status-color: Theme.color-green;
+            is-active: net.connected;
             
-            HorizontalBox {
-                spacing: Theme.spacing-sm;
-                padding: 0px;
-                
-                TouchArea {
-                    width: 50px; height: 20px;
-                    clicked => { root.toggle-wifi(!root.wifi-enabled); }
-                    Rectangle {
-                        width: 100%; height: 100%; border-radius: 10px;
-                        background: root.wifi-enabled ? Theme.color-green : Theme.card-surface;
-                        Text { text: root.wifi-enabled ? "Disable" : "Enable"; color: root.wifi-enabled ? #000000 : Theme.text-primary; font-size: 10px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
-                    }
-                }
-                
-                if root.wifi-enabled : TouchArea {
-                    width: 50px; height: 20px;
-                    clicked => { root.scan-wifi(); }
-                    Rectangle {
-                        width: 100%; height: 100%; border-radius: 10px;
-                        background: Theme.card-surface;
-                        Text { text: "Scan"; color: Theme.text-primary; font-size: 10px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
-                    }
-                }
-            }
-        }
-
-        if !root.wifi-enabled : EmptyState {
-            height: 120px;
-            icon: @image-url("../../../../assets/icons/wifi-off-light.svg"); // Note: Assuming this exists, fallback is text if not
-            message: "Wi-Fi is turned off";
-        }
-
-        if root.wifi-enabled : ScrollView {
-            height: 140px;
-            VerticalBox {
-                spacing: 8px;
-                padding: 0px;
-                
-                for net in root.wifi-networks : Rectangle {
-                    height: 48px;
-                    border-radius: Theme.card-radius-small;
-                    background: net.connected ? rgba(48, 209, 88, 0.15) : Theme.card-surface;
-                    border-width: 1px;
-                    border-color: net.connected ? rgba(48, 209, 88, 0.3) : Theme.border-color;
-                    
-                    TouchArea {
-                        clicked => {
-                            if net.connected {
-                                root.disconnect-wifi();
-                            } else {
-                                root.connect-wifi(net.ssid, "");
-                            }
-                        }
-                    }
-                    
-                    HorizontalBox {
-                        padding: Theme.spacing-md;
-                        alignment: space-between;
-                        
-                        VerticalBox {
-                            spacing: 2px;
-                            padding: 0px;
-                            alignment: center;
-                            Text { text: net.ssid; color: Theme.text-primary; font-size: 13px; font-weight: net.connected ? 700 : 500; }
-                        }
-                        
-                        HorizontalBox {
-                            spacing: 8px;
-                            padding: 0px;
-                            alignment: end;
-                            
-                            Text { text: net.signal + "%"; color: Theme.text-secondary; font-size: 11px; vertical-alignment: center; }
-                            
-                            if net.connected : Text { text: "Connected"; color: Theme.color-green; font-size: 11px; font-weight: 700; vertical-alignment: center; }
-                        }
-                    }
+            clicked => {
+                if net.connected {
+                    root.disconnect-wifi();
+                } else {
+                    root.connect-wifi(net.ssid, "");
                 }
             }
         }

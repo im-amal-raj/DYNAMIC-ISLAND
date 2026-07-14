@@ -1,0 +1,36 @@
+import { Theme } from "../theme.slint";
+
+// PURPOSE: Apple-style toggle switch for boolean settings
+// INPUTS: checked (bool), toggled(bool) callback
+// USED BY: WiFi, Bluetooth tabs
+export component ToggleSwitch inherits TouchArea {
+    in-out property <bool> checked;
+    callback toggled(bool);
+    
+    width: 44px;
+    height: 24px;
+    
+    clicked => {
+        root.checked = !root.checked;
+        root.toggled(root.checked);
+    }
+    
+    Rectangle {
+        width: 100%; height: 100%;
+        border-radius: 12px;
+        background: root.checked ? Theme.color-green : rgba(255, 255, 255, 0.15);
+        animate background { duration: Theme.micro-duration; }
+        
+        Rectangle {
+            width: 20px; height: 20px;
+            border-radius: 10px;
+            background: Theme.text-primary;
+            y: 2px;
+            x: root.checked ? 22px : 2px;
+            animate x { duration: Theme.micro-duration; easing: Theme.standard-easing; }
+            
+            border-width: 1px;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+    }
+}

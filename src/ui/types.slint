@@ -67,3 +67,31 @@ export struct AppItem {
     has_icon: bool,
     icon: image,
 }
+
+export struct MediaState {
+    track_title: string,
+    track_artist: string,
+    has_album_art: bool,
+    album_art: image,
+    is_playing: bool,
+    track_position_str: string,
+    track_duration_str: string,
+    track_progress: float,
+}
+
+export struct HardwareStats {
+    cpu_usage: float,
+    memory_usage: float,
+    net_down_speed: string,
+    net_up_speed: string,
+    gpu_name: string,
+    gpu_usage: float,
+    gpu_ring_commands: string,
+    igpu_name: string,
+    igpu_usage: float,
+    igpu_ring_commands: string,
+    cpu_ring_commands: string,
+    ram_ring_commands: string,
+    cpu_large_ring_commands: string,
+    ram_large_ring_commands: string,
+}

@@ -1,6 +1,8 @@
 import { Theme } from "../theme.slint";
 import { NotifItem } from "../types.slint";
 import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
+import { SectionHeader } from "../components/section_header.slint";
+import { EmptyState } from "../components/empty_state.slint";
 
 export component NotificationHistoryPanel inherits Rectangle {
     in property <[NotifItem]> notif-history;
@@ -13,36 +15,41 @@ export component NotificationHistoryPanel inherits Rectangle {
 
     VerticalBox {
         width: 100%; height: 100%;
-        padding: 16px; padding-bottom: 48px;
-        spacing: 12px;
+        padding: Theme.panel-padding; padding-bottom: Theme.panel-padding-bottom;
+        spacing: Theme.spacing-md;
     
-        HorizontalBox {
-            alignment: space-between;
-            Text { text: "NOTIFICATIONS"; color: #0a84ff; font-size: 10px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+        SectionHeader {
+            title: "NOTIFICATIONS";
+            title-color: Theme.color-blue;
             
             Rectangle {
                 width: 45px; height: 18px;
                 border-radius: 4px;
                 background: ta_clear_notifs.has-hover ? rgba(255, 59, 48, 0.2) : rgba(255, 59, 48, 0.1);
-                Text { text: "CLEAR"; color: #ff3b30; font-size: 9px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                Text { text: "CLEAR"; color: Theme.color-red; font-size: 9px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
                 ta_clear_notifs := TouchArea { width: 100%; height: 100%; clicked => { root.clear-notif-history(); } }
             }
         }
         
-        ScrollView {
+        if root.notif-history.length == 0 : EmptyState {
+            icon: @image-url("../../../assets/icons/bell-light.svg");
+            message: "No notifications";
+        }
+        
+        if root.notif-history.length > 0 : ScrollView {
             height: 160px;
             VerticalBox {
-                spacing: 8px;
+                spacing: Theme.spacing-sm;
                 alignment: start;
                 for item in root.notif-history : Rectangle {
                     height: 50px;
-                    border-radius: 8px;
-                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: Theme.card-radius-small;
+                    background: Theme.card-surface;
                     
                     HorizontalBox {
-                        padding: 8px;
+                        padding: Theme.spacing-sm;
                         alignment: start;
-                        spacing: 12px;
+                        spacing: Theme.spacing-md;
                         
                         if item.has-icon : Image {
                             width: 34px; height: 34px;
@@ -53,13 +60,18 @@ export component NotificationHistoryPanel inherits Rectangle {
                             width: 34px; height: 34px;
                             border-radius: 4px;
                             background: rgba(255, 255, 255, 0.1);
-                            Text { text: "🔔"; horizontal-alignment: center; vertical-alignment: center; }
+                            Image { 
+                                width: 14px; height: 14px; 
+                                source: @image-url("../../../assets/icons/bell-light.svg"); 
+                                colorize: Theme.text-primary; 
+                                horizontal-alignment: center; vertical-alignment: center;
+                            }
                         }
                         VerticalBox {
-                            spacing: 2px;
+                            spacing: Theme.spacing-xs;
                             alignment: center;
-                            Text { text: item.summary; color: #ffffff; font-size: 13px; font-weight: 700; overflow: elide; }
-                            Text { text: item.body; color: #a1a1a6; font-size: 11px; overflow: elide; }
+                            Text { text: item.summary; color: Theme.text-primary; font-size: 13px; font-weight: 700; overflow: elide; }
+                            Text { text: item.body; color: Theme.text-secondary; font-size: 11px; overflow: elide; }
                         }
                     }
                 }

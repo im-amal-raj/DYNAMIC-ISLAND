@@ -19,8 +19,8 @@ import { SysMonitorPanel } from "ui/panels/sys_monitor/sys_monitor_panel.slint";
 import { SysControlsPanel } from "ui/panels/controls/controls_panel.slint";
 import { SystemTrayPanel } from "ui/panels/system_tray/system_tray_panel.slint";
 
-import { IslandSection, TaskItem, CalendarDay, WifiNetwork, BluetoothDevice, AudioDevice, ClipItem, NotifItem, AppItem } from "ui/types.slint";
-export { IslandSection, TaskItem, CalendarDay, WifiNetwork, BluetoothDevice, AudioDevice, ClipItem, NotifItem, AppItem }
+import { IslandSection, TaskItem, CalendarDay, WifiNetwork, BluetoothDevice, AudioDevice, ClipItem, NotifItem, AppItem, MediaState, HardwareStats } from "ui/types.slint";
+export { IslandSection, TaskItem, CalendarDay, WifiNetwork, BluetoothDevice, AudioDevice, ClipItem, NotifItem, AppItem, MediaState, HardwareStats }
 
 
 export component UltimateDynamicIsland inherits Window {
@@ -80,18 +80,32 @@ export component UltimateDynamicIsland inherits Window {
             root.target-width = 380px;
             root.target-height = 340px;
         }
+        if (active-section != IslandSection.Compact && active-section != IslandSection.Notification) {
+            root.last-expanded-section = active-section;
+        }
         root.active-section-changed(active-section);
     }
     
+    property <IslandSection> last-expanded-section: IslandSection.TodoManager;
+    
     property <length> animated-width: target-width;
     property <length> animated-height: target-height;
-    animate animated-width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
-    animate animated-height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+    animate animated-width { duration: Theme.standard-duration; easing: Theme.standard-easing; }
+    animate animated-height { duration: Theme.standard-duration; easing: Theme.standard-easing; }
     
-    width: animated-width;
+    width: 420px;
     height: animated-height;
     background: transparent;
     no-frame: true;
+    
+    property <IslandSection> pre-notification-section: IslandSection.Compact;
+    Timer {
+        interval: 5000ms;
+        running: root.active-section == IslandSection.Notification;
+        triggered => {
+            root.active-section = root.pre-notification-section;
+        }
+    }
     
     property <angle> art-rotation: 0deg;
     Timer {
@@ -103,32 +117,14 @@ export component UltimateDynamicIsland inherits Window {
     }
     
     // Core Engine Bindings (Injected directly by Rust threads)
-    in property <string> track-title: "No Media Active";
-    in property <string> track-artist: "Unknown Artist";
-    in property <image> album-art;
-    in property <bool> has-album-art: false;
+    in property <MediaState> media-state;
     in-out property <bool> is-playing: false;
-    in property <string> track-position-str: "--:--";
-    in property <string> track-duration-str: "--:--";
-    in property <float> track-progress: 0.0;
+    
+    in property <HardwareStats> hardware-stats;
+    
     in property <[ClipItem]> clipboard-history: [];
     in property <[NotifItem]> notif-history: [];
     in property <[AppItem]> app-results: [];
-    in property <float> cpu-usage: 0.0;
-    in property <float> memory-usage: 0.0;
-    in property <string> net-down-speed: "0.0 KB/s";
-    in property <string> net-up-speed: "0.0 KB/s";
-    in property <string> gpu-name: "Nvidia Graphics";
-    in property <float> gpu-usage: 0.0;
-    in property <string> gpu-ring-commands: "";
-    in property <string> igpu-name: "AMD/Intel Graphics";
-    in property <float> igpu-usage: 0.0;
-    in property <string> igpu-ring-commands: "";
-    in property <string> cpu-ring-commands: "";
-    in property <string> ram-ring-commands: "";
-    in property <string> cpu-large-ring-commands: "";
-    in property <string> ram-large-ring-commands: "";
-    
     in property <[TaskItem]> active-tasks: [];
     in property <[CalendarDay]> calendar-days-grid: [];
     in property <string> current-month-year-label: "July 2026";
@@ -232,8 +228,9 @@ export component UltimateDynamicIsland inherits Window {
     title: "dynamic-island";
 
     IslandPill {
-        width: 100%;
+        width: animated-width;
         height: 100%;
+        x: (parent.width - self.width) / 2;
         background: root.is-playing && root.active-section == IslandSection.Compact ? transparent : Theme.glass-gradient;
         border-color: root.is-playing && root.active-section == IslandSection.Compact ? transparent : Theme.border-gradient;
         border-width: root.is-playing && root.active-section == IslandSection.Compact ? 0px : 1px;
@@ -245,13 +242,15 @@ export component UltimateDynamicIsland inherits Window {
             // Click to close/toggle if expanded
             clicked => {
                 if (root.active-section == IslandSection.Compact) {
-                    root.active-section = IslandSection.TodoManager;
-                    root.target-width = 420px;
-                    root.target-height = 335px;
+                    if (root.is-playing) {
+                        root.active-section = IslandSection.Media;
+                    } else if (root.has-new-notification) {
+                        root.active-section = IslandSection.NotificationHistory;
+                    } else {
+                        root.active-section = root.last-expanded-section;
+                    }
                 } else if (root.active-section != IslandSection.Compact) {
                     root.active-section = IslandSection.Compact;
-                    root.target-width = 220px;
-                    root.target-height = 42px;
                 }
             }
         }
@@ -260,18 +259,13 @@ export component UltimateDynamicIsland inherits Window {
         if root.active-section == IslandSection.Compact : CompactPanel {
             is-playing: root.is-playing;
             has-new-notification: root.has-new-notification;
-            cpu-usage: root.cpu-usage;
-            memory-usage: root.memory-usage;
-            cpu-ring-commands: root.cpu-ring-commands;
-            ram-ring-commands: root.ram-ring-commands;
+            hardware-stats: root.hardware-stats;
             current-date-string: root.current-date-string;
             current-time-string: root.current-time-string;
             peek-notif-summary: root.peek-notif-summary;
             peek-notif-icon: root.peek-notif-icon;
-            has-album-art: root.has-album-art;
-            album-art: root.album-art;
+            media-state: root.media-state;
             art-rotation: root.art-rotation;
-            track-title: root.track-title;
             active-section <=> root.active-section;
             right-pill-hovered <=> root.right-pill-hovered;
         }
@@ -286,16 +280,10 @@ export component UltimateDynamicIsland inherits Window {
             animate opacity { duration: 200ms; easing: ease-out; }
 
             MediaPanel {
-                track-title: root.track-title;
-                track-artist: root.track-artist;
-                has-album-art: root.has-album-art;
-                album-art: root.album-art;
+                media-state: root.media-state;
                 is-playing <=> root.is-playing;
                 art-rotation: root.art-rotation;
                 volume-level: root.volume-level;
-                track-position-str: root.track-position-str;
-                track-duration-str: root.track-duration-str;
-                track-progress: root.track-progress;
                 
                 set-volume(val) => { root.set-volume(val); }
                 media-action(action) => { root.media-action(action); }
@@ -489,18 +477,7 @@ export component UltimateDynamicIsland inherits Window {
             animate opacity { duration: 200ms; easing: ease-out; }
 
             SysMonitorPanel {
-                cpu-usage: root.cpu-usage;
-                memory-usage: root.memory-usage;
-                cpu-large-ring-commands: root.cpu-large-ring-commands;
-                ram-large-ring-commands: root.ram-large-ring-commands;
-                gpu-name: root.gpu-name;
-                gpu-usage: root.gpu-usage;
-                gpu-ring-commands: root.gpu-ring-commands;
-                igpu-name: root.igpu-name;
-                igpu-usage: root.igpu-usage;
-                igpu-ring-commands: root.igpu-ring-commands;
-                net-down-speed: root.net-down-speed;
-                net-up-speed: root.net-up-speed;
+                hardware-stats: root.hardware-stats;
             }
         }
 

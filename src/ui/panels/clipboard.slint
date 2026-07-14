@@ -1,8 +1,10 @@
 import { Theme } from "../theme.slint";
 import { ClipItem } from "../types.slint";
-import { AnimatedIcon } from "../components/animated_icon.slint";
 import { GlassCard } from "../components/glass_card.slint";
-import { HorizontalBox, VerticalBox, ScrollView, LineEdit, ListView } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, ScrollView, ListView } from "std-widgets.slint";
+import { SectionHeader } from "../components/section_header.slint";
+import { SearchField } from "../components/search_field.slint";
+import { EmptyState } from "../components/empty_state.slint";
 
 export component ClipboardPanel inherits Rectangle {
     in property <[ClipItem]> clipboard-history;
@@ -19,81 +21,40 @@ export component ClipboardPanel inherits Rectangle {
 
     VerticalBox {
         width: 100%; height: 100%;
-        padding: 16px; padding-bottom: 48px;
-        spacing: 12px;
+        padding: Theme.panel-padding; padding-bottom: Theme.panel-padding-bottom;
+        spacing: Theme.spacing-md;
     
-        HorizontalBox {
-            alignment: space-between;
-            Text { text: "CLIPBOARD HISTORY"; color: rgba(255, 255, 255, 0.4); font-size: 10px; font-weight: 800; letter-spacing: 1px; vertical-alignment: center; }
+        SectionHeader {
+            title: "CLIPBOARD HISTORY";
+            title-color: Theme.text-tertiary;
             
             Rectangle {
                 width: 55px; height: 20px;
                 border-radius: 6px;
                 background: ta_clear.has-hover ? rgba(255, 59, 48, 0.25) : rgba(255, 59, 48, 0.15);
-                animate background { duration: 150ms; }
-                Text { text: "CLEAR"; color: #ff453a; font-size: 9px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
+                animate background { duration: Theme.micro-duration; }
+                Text { text: "CLEAR"; color: Theme.color-red; font-size: 9px; font-weight: 800; horizontal-alignment: center; vertical-alignment: center; width: 100%; height: 100%; }
                 ta_clear := TouchArea { width: 100%; height: 100%; clicked => { root.clear-clipboard(); } }
             }
         }
         
-        // Search Input Row
-        Rectangle {
-            height: 32px;
-            border-radius: 8px;
-            background: Theme.card-surface;
-            border-width: 1px;
-            border-color: Theme.card-border;
-            
-            HorizontalBox {
-                padding: 6px;
-                spacing: 8px;
-                Image { 
-                    source: @image-url("../../../assets/icons/search.svg");
-                    width: 14px; height: 14px;
-                    colorize: Theme.text-tertiary; 
-                }
-                
-                Rectangle {
-                    width: 100%;
-                    height: 100%;
-                    
-                    clip_search := TextInput {
-                        font-size: 12px;
-                        color: #ffffff;
-                        width: 100%;
-                        height: 100%;
-                        vertical-alignment: center;
-                        single-line: true;
-                        edited => {
-                            root.search-clipboard(self.text);
-                        }
-                    }
-                    if clip_search.text == "" : Text {
-                        text: "Search clipboard...";
-                        color: Theme.text-tertiary;
-                        font-size: 12px;
-                        vertical-alignment: center;
-                        width: 100%;
-                        height: 100%;
-                        x: 0px; // Align with input
-                    }
-                }
+        SearchField {
+            placeholder-text: "Search clipboard...";
+            changed text => {
+                root.search-clipboard(self.text);
             }
         }
 
-        if root.clipboard-history.length == 0 : Text {
-            text: "Nothing copied yet";
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 11px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
+        if root.clipboard-history.length == 0 : EmptyState {
+            icon: @image-url("../../../assets/icons/clipboard-light.svg");
+            message: "Nothing copied yet";
         }
         
-        ListView {
+        if root.clipboard-history.length > 0 : ListView {
             for item in root.clipboard-history : ta := TouchArea {
                 height: 62px;
                 property <float> current-scale: self.pressed ? 0.95 : (self.has-hover ? 1.02 : 1.0);
-                animate current-scale { duration: 150ms; easing: Theme.spring-easing; }
+                animate current-scale { duration: Theme.micro-duration; easing: Theme.standard-easing; }
                 clicked => { root.paste-clip(item.id); }
                 
                 GlassCard {
@@ -108,15 +69,14 @@ export component ClipboardPanel inherits Rectangle {
                         width: 22px; height: 22px;
                         border-radius: 11px;
                         background: erase_ta.has-hover ? rgba(255, 59, 48, 0.2) : transparent;
-                        x: parent.width - self.width - 12px;
+                        x: parent.width - self.width - Theme.spacing-md;
                         y: (parent.height - self.height) / 2;
                         z: 10;
                         
-                        Text {
-                            text: "✕";
-                            color: erase_ta.has-hover ? #ff453a : Theme.text-tertiary;
-                            font-size: 10px;
-                            font-weight: 800;
+                        Image {
+                            width: 14px; height: 14px;
+                            source: @image-url("../../../assets/icons/x-light.svg");
+                            colorize: erase_ta.has-hover ? Theme.color-red : Theme.text-tertiary;
                             horizontal-alignment: center;
                             vertical-alignment: center;
                         }
@@ -129,21 +89,20 @@ export component ClipboardPanel inherits Rectangle {
                     }
                     
                     HorizontalBox {
-                        padding: 10px;
+                        padding: Theme.spacing-md;
                         padding-right: 36px;
                         alignment: start;
-                        spacing: 14px;
+                        spacing: Theme.spacing-md;
                         
                         if item.has_image : Image {
                             width: 34px; height: 34px;
                             source: item.image_data;
                             image-fit: cover;
                         }
-                        if !item.has_image : AnimatedIcon {
-                            icon-size: 16px;
-                            fill: Theme.accent-info;
-                            // Clipboard Icon Path
-                            commands: "M 14 2 L 10.83 2 C 10.42 0.84 9.31 0 8 0 C 6.69 0 5.58 0.84 5.17 2 L 2 2 C 0.9 2 0 2.9 0 4 L 0 18 C 0 19.1 0.9 20 2 20 L 14 20 C 15.1 20 16 19.1 16 18 L 16 4 C 16 2.9 15.1 2 14 2 Z M 8 2 C 8.55 2 9 2.45 9 3 C 9 3.55 8.55 4 8 4 C 7.45 4 7 3.55 7 3 C 7 2.45 7.45 2 8 2 Z M 14 18 L 2 18 L 2 4 L 14 4 L 14 18 Z";
+                        if !item.has_image : Image {
+                            width: 16px; height: 16px;
+                            source: @image-url("../../../assets/icons/clipboard-light.svg");
+                            colorize: Theme.text-secondary;
                         }
                         
                         Text { 

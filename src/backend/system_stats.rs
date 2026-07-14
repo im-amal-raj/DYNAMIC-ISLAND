@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use tokio::sync::Notify;
 use slint::{SharedString, ComponentHandle};
 
-use crate::UltimateDynamicIsland;
+use crate::{UltimateDynamicIsland, HardwareStats};
 
 fn get_net_bytes() -> (u64, u64) {
     if let Ok(data) = std::fs::read_to_string("/proc/net/dev") {
@@ -191,22 +191,24 @@ pub fn setup(
                 let igpu_ring_cmds_clone = igpu_ring_cmds.clone();
                 move || {
                     if let Some(ui) = ui_handle.upgrade() {
-                        ui.set_cpu_usage(global_cpu / 100.0);
-                        ui.set_memory_usage(mem_usage);
-                        ui.set_cpu_ring_commands(SharedString::from(cpu_ring_cmds_clone));
-                        ui.set_ram_ring_commands(SharedString::from(ram_ring_cmds_clone));
-                        ui.set_cpu_large_ring_commands(SharedString::from(cpu_large_ring_cmds_clone));
-                        ui.set_ram_large_ring_commands(SharedString::from(ram_large_ring_cmds_clone));
+                        let mut stats = ui.get_hardware_stats();
+                        stats.cpu_usage = global_cpu / 100.0;
+                        stats.memory_usage = mem_usage;
+                        stats.cpu_ring_commands = SharedString::from(cpu_ring_cmds_clone);
+                        stats.ram_ring_commands = SharedString::from(ram_ring_cmds_clone);
+                        stats.cpu_large_ring_commands = SharedString::from(cpu_large_ring_cmds_clone);
+                        stats.ram_large_ring_commands = SharedString::from(ram_large_ring_cmds_clone);
                         if is_monitor {
-                            ui.set_net_down_speed(SharedString::from(rx_speed_str_clone));
-                            ui.set_net_up_speed(SharedString::from(tx_speed_str_clone));
-                            ui.set_gpu_name(SharedString::from(gpu_name_clone));
-                            ui.set_gpu_usage(gpu_usage);
-                            ui.set_gpu_ring_commands(SharedString::from(gpu_ring_cmds_clone));
-                            ui.set_igpu_name(SharedString::from(igpu_name_clone));
-                            ui.set_igpu_usage(igpu_usage);
-                            ui.set_igpu_ring_commands(SharedString::from(igpu_ring_cmds_clone));
+                            stats.net_down_speed = SharedString::from(rx_speed_str_clone);
+                            stats.net_up_speed = SharedString::from(tx_speed_str_clone);
+                            stats.gpu_name = SharedString::from(gpu_name_clone);
+                            stats.gpu_usage = gpu_usage;
+                            stats.gpu_ring_commands = SharedString::from(gpu_ring_cmds_clone);
+                            stats.igpu_name = SharedString::from(igpu_name_clone);
+                            stats.igpu_usage = igpu_usage;
+                            stats.igpu_ring_commands = SharedString::from(igpu_ring_cmds_clone);
                         }
+                        ui.set_hardware_stats(stats);
                     }
                 }
             });

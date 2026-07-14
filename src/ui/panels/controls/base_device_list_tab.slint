@@ -1,0 +1,59 @@
+import { Theme } from "../../theme.slint";
+import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
+import { SectionHeader } from "../../components/section_header.slint";
+import { EmptyState } from "../../components/empty_state.slint";
+import { ToggleSwitch } from "../../components/toggle_switch.slint";
+
+// PURPOSE: Core template for Wi-Fi and Bluetooth tabs
+// INPUTS: title, status-text, is-enabled, empty-icon, empty-message
+// USED BY: wifi_tab.slint, bluetooth_tab.slint
+export component BaseDeviceListTab inherits Rectangle {
+    in property <string> title;
+    in property <string> status-text;
+    in-out property <bool> is-enabled;
+    in property <bool> is-empty;
+    in property <image> empty-icon;
+    in property <string> empty-message;
+    
+    callback toggled(bool);
+    
+    VerticalBox {
+        width: 100%; height: 100%;
+        padding: Theme.panel-padding;
+        spacing: Theme.spacing-md;
+        
+        SectionHeader {
+            title: root.title;
+            title-color: Theme.color-blue;
+            
+            HorizontalBox {
+                padding: 0px; spacing: Theme.spacing-sm; alignment: end;
+                Text { text: root.status-text; color: Theme.text-secondary; font-size: 11px; vertical-alignment: center; }
+                ToggleSwitch {
+                    checked: root.is-enabled;
+                    toggled(val) => { root.toggled(val); }
+                }
+            }
+        }
+        
+        if root.is-enabled && root.is-empty : EmptyState {
+            icon: root.empty-icon;
+            message: root.empty-message;
+        }
+        
+        if !root.is-enabled : EmptyState {
+            icon: root.empty-icon;
+            message: root.title + " is turned off";
+        }
+        
+        ScrollView {
+            visible: root.is-enabled && !root.is-empty;
+            height: 160px;
+            VerticalBox {
+                spacing: Theme.spacing-sm;
+                alignment: start;
+                @children
+            }
+        }
+    }
+}

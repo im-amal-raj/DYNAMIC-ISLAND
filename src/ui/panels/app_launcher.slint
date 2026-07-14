@@ -1,6 +1,8 @@
 import { Theme } from "../theme.slint";
 import { AppItem } from "../types.slint";
-import { HorizontalBox, VerticalBox, LineEdit, ScrollView, ListView } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, ScrollView, ListView } from "std-widgets.slint";
+import { SearchField } from "../components/search_field.slint";
+import { EmptyState } from "../components/empty_state.slint";
 
 export component AppLauncherPanel inherits Rectangle {
     in property <[AppItem]> app-results;
@@ -19,65 +21,41 @@ export component AppLauncherPanel inherits Rectangle {
 
     VerticalBox {
         width: 100%; height: 100%;
-        padding: 16px; padding-bottom: 48px;
-        spacing: 12px;
+        padding: Theme.panel-padding; padding-bottom: Theme.panel-padding-bottom;
+        spacing: Theme.spacing-md;
     
-        Rectangle {
-            height: 42px;
-            border-radius: 21px;
-            background: Theme.card-surface;
-            border-width: 1px;
-            border-color: Theme.card-border;
-            
-            HorizontalBox {
-                padding: 8px; padding-left: 14px;
-                spacing: 10px;
-                Image {
-                    source: @image-url("../../../assets/icons/search.svg");
-                    width: 16px; height: 16px;
-                    colorize: Theme.text-tertiary;
-                }
-                app_input := TextInput {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: Theme.text-primary;
-                    width: 100%;
-                    vertical-alignment: center;
-                    single-line: true;
-                    init => { self.focus(); }
-                    edited => { root.search-apps(self.text); }
-                    accepted => {
-                        if root.app-results.length > 0 {
-                            root.launch-app(root.app-results[0].exec_cmd);
-                        }
-                    }
+        app_input := SearchField {
+            placeholder-text: "Search apps...";
+            changed text => {
+                root.search-apps(self.text);
+            }
+            accepted => {
+                if root.app-results.length > 0 {
+                    root.launch-app(root.app-results[0].exec_cmd);
                 }
             }
         }
         
-        if root.app-results.length == 0 : Text {
-            text: "No apps match...";
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 11px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
+        if root.app-results.length == 0 : EmptyState {
+            icon: @image-url("../../../assets/icons/grid-light.svg");
+            message: "No apps match...";
         }
         
-        ListView {
+        if root.app-results.length > 0 : ListView {
             for item in root.app-results : ta_app := TouchArea {
                 height: 44px;
                 clicked => { root.launch-app(item.exec_cmd); }
                 
                 Rectangle {
-                    border-radius: 12px;
+                    border-radius: Theme.card-radius;
                     background: ta_app.has-hover ? Theme.card-surface-hover : Theme.card-surface;
                     border-width: 1px;
                     border-color: ta_app.has-hover ? Theme.card-border-hover : Theme.card-border;
-                    animate background, border-color { duration: Theme.fade-duration; }
+                    animate background, border-color { duration: Theme.micro-duration; }
                     
                     HorizontalBox {
-                        padding: 8px;
-                        spacing: 12px;
+                        padding: Theme.spacing-sm;
+                        spacing: Theme.spacing-md;
                         alignment: start;
                         
                         if item.has-icon : Image {
@@ -90,7 +68,7 @@ export component AppLauncherPanel inherits Rectangle {
                             border-radius: 8px;
                             background: rgba(255, 255, 255, 0.1);
                             Image {
-                                source: @image-url("../../../assets/icons/grid.svg");
+                                source: @image-url("../../../assets/icons/app-generic-light.svg");
                                 width: 14px; height: 14px;
                                 colorize: Theme.text-secondary;
                             }

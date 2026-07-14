@@ -14,9 +14,11 @@ export component AudioTab inherits Rectangle {
     callback set-mic-volume(float);
     callback set-default-audio(string);
 
-    VerticalBox {
-        spacing: Theme.spacing-md;
-        padding: 0px;
+    ScrollView {
+        width: 100%; height: 100%;
+        VerticalBox {
+            spacing: Theme.spacing-md;
+            padding: 0px;
 
         // Output Volume
         VerticalBox {
@@ -108,6 +110,7 @@ export component AudioTab inherits Rectangle {
                         }
                     }
                 }
+            }
             }
         }
     }

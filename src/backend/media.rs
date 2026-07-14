@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU8, Ordering};
 use tokio::sync::Notify;
-use crate::UltimateDynamicIsland;
+use crate::{UltimateDynamicIsland, MediaState};
 use log::{info, warn};
 
 pub fn setup_media(
@@ -264,14 +264,16 @@ pub fn setup_media(
 
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(ui) = ui_handle.upgrade() {
-                        ui.set_track_title(SharedString::from(title_clone));
-                        ui.set_track_artist(SharedString::from(artist_clone));
+                        let mut state = ui.get_media_state();
+                        state.track_title = SharedString::from(title_clone);
+                        state.track_artist = SharedString::from(artist_clone);
                         if !skip_is_playing_update {
+                            state.is_playing = is_playing;
                             ui.set_is_playing(is_playing);
                         }
-                        ui.set_track_position_str(SharedString::from(pos_str));
-                        ui.set_track_duration_str(SharedString::from(len_str));
-                        ui.set_track_progress(prog);
+                        state.track_position_str = SharedString::from(pos_str);
+                        state.track_duration_str = SharedString::from(len_str);
+                        state.track_progress = prog;
                         
                         if url_changed {
                             if let Some(rgba) = loaded_image {
@@ -281,13 +283,14 @@ pub fn setup_media(
                                     rgba.height(),
                                 );
                                 let slint_img = slint::Image::from_rgba8(buffer);
-                                ui.set_album_art(slint_img);
-                                ui.set_has_album_art(true);
+                                state.album_art = slint_img;
+                                state.has_album_art = true;
                             } else if art_url.is_empty() {
-                                ui.set_album_art(slint::Image::default());
-                                ui.set_has_album_art(false);
+                                state.album_art = slint::Image::default();
+                                state.has_album_art = false;
                             }
                         }
+                        ui.set_media_state(state);
                     }
                 });
             }

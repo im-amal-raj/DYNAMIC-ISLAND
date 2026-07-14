@@ -2,6 +2,7 @@ import { Theme } from "../theme.slint";
 import { LineEdit } from "std-widgets.slint";
 
 export component SearchField inherits Rectangle {
+    forward-focus: input;
     in property <string> placeholder-text: "Search...";
     in property <image> icon: @image-url("../../../assets/icons/search-light.svg");
     in-out property <string> text <=> input.text;

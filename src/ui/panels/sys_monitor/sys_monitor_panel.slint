@@ -3,22 +3,10 @@ import { HorizontalBox, VerticalBox } from "std-widgets.slint";
 import { SectionHeader } from "../../components/section_header.slint";
 import { MetricCard } from "metric_card.slint";
 
+import { HardwareStats } from "../../types.slint";
+
 export component SysMonitorPanel inherits Rectangle {
-    in property <float> cpu-usage: 0.0;
-    in property <float> memory-usage: 0.0;
-    in property <string> cpu-large-ring-commands: "";
-    in property <string> ram-large-ring-commands: "";
-    
-    in property <string> gpu-name: "";
-    in property <float> gpu-usage: 0.0;
-    in property <string> gpu-ring-commands: "";
-    
-    in property <string> igpu-name: "";
-    in property <float> igpu-usage: 0.0;
-    in property <string> igpu-ring-commands: "";
-    
-    in property <string> net-down-speed: "";
-    in property <string> net-up-speed: "";
+    in property <HardwareStats> hardware-stats;
 
     TouchArea {
         width: 100%; height: 100%;
@@ -49,15 +37,15 @@ export component SysMonitorPanel inherits Rectangle {
                 MetricCard {
                     title: "CPU";
                     icon: @image-url("../../../../assets/icons/cpu-light.svg");
-                    usage: root.cpu-usage;
-                    ring-commands: root.cpu-large-ring-commands;
+                    usage: root.hardware-stats.cpu-usage;
+                    ring-commands: root.hardware-stats.cpu-large-ring-commands;
                 }
 
                 MetricCard {
                     title: "RAM";
                     icon: @image-url("../../../../assets/icons/layers-light.svg"); // Memory-like icon
-                    usage: root.memory-usage;
-                    ring-commands: root.ram-large-ring-commands;
+                    usage: root.hardware-stats.memory-usage;
+                    ring-commands: root.hardware-stats.ram-large-ring-commands;
                 }
             }
 
@@ -69,19 +57,19 @@ export component SysMonitorPanel inherits Rectangle {
                 MetricCard {
                     title: "GPU 1";
                     icon: @image-url("../../../../assets/icons/monitor-light.svg");
-                    usage: root.gpu-usage;
-                    ring-commands: root.gpu-ring-commands;
+                    usage: root.hardware-stats.gpu-usage;
+                    ring-commands: root.hardware-stats.gpu-ring-commands;
                 }
 
-                if root.igpu-name != "" : MetricCard {
+                if root.hardware-stats.igpu-name != "" : MetricCard {
                     title: "GPU 2";
                     icon: @image-url("../../../../assets/icons/monitor-light.svg");
-                    usage: root.igpu-usage;
-                    ring-commands: root.igpu-ring-commands;
+                    usage: root.hardware-stats.igpu-usage;
+                    ring-commands: root.hardware-stats.igpu-ring-commands;
                 }
 
                 // If only 1 GPU, show Network instead
-                if root.igpu-name == "" : Rectangle {
+                if root.hardware-stats.igpu-name == "" : Rectangle {
                     border-radius: Theme.card-radius;
                     background: Theme.card-surface;
                     border-width: 1px;
@@ -109,12 +97,12 @@ export component SysMonitorPanel inherits Rectangle {
                             HorizontalBox {
                                 padding: 0px;
                                 alignment: space-between;
-                                Text { text: "↓ " + root.net-down-speed; color: Theme.color-blue; font-size: 13px; font-weight: 700; }
+                                Text { text: "↓ " + root.hardware-stats.net-down-speed; color: Theme.color-blue; font-size: 13px; font-weight: 700; }
                             }
                             HorizontalBox {
                                 padding: 0px;
                                 alignment: space-between;
-                                Text { text: "↑ " + root.net-up-speed; color: Theme.color-orange; font-size: 13px; font-weight: 700; }
+                                Text { text: "↑ " + root.hardware-stats.net-up-speed; color: Theme.color-orange; font-size: 13px; font-weight: 700; }
                             }
                         }
                     }

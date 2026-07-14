@@ -3,7 +3,7 @@ import { Theme } from "../theme.slint";
 export component CircularProgress inherits Rectangle {
     in property <float> progress; // 0.0 to 1.0
     in property <color> track-color: Theme.border-color;
-    in property <color> fill-color: Theme.accent-primary;
+    in property <color> fill-color: Theme.color-blue;
     in property <length> ring-width: 1.8px;
     in property <string> ring-commands: ""; // Passed from Rust due to Slint arc path limitations
     

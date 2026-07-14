@@ -39,7 +39,7 @@ export component TaskItemRow inherits Rectangle {
             if root.task.is-completed : Image {
                 source: @image-url("../../../../assets/icons/check-circle-fill.svg");
                 width: 14px; height: 14px;
-                colorize: #000000;
+                colorize: Theme.surface-primary;
                 x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
             }
         }
@@ -58,6 +58,15 @@ export component TaskItemRow inherits Rectangle {
             font-size: 13px;
             font-weight: 500;
             overflow: elide;
+            
+            Rectangle {
+                width: root.task.is-completed ? parent.width : 0px;
+                height: 1px;
+                background: Theme.text-tertiary;
+                y: parent.height / 2;
+                x: 0;
+                animate width { duration: Theme.standard-duration; easing: Theme.standard-easing; }
+            }
         }
         
         if root.task.due_date_str != "" : Text {
