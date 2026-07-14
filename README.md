@@ -81,11 +81,9 @@ window-rule {
     match-app-id "rust-island"
     
     open-floating true
-    exclude-from-states-list
     
     border { off; }
     focus-ring { off; }
-    default-floating-position x="center" y=10
 }
 ```
 

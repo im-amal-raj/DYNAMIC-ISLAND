@@ -13,7 +13,7 @@ export component ListItem inherits Rectangle {
     in property <bool> is-active: false;
     callback clicked;
     
-    height: 44px;
+    min-height: 44px;
     border-radius: Theme.card-radius-small;
     background: ta.has-hover ? Theme.card-surface-hover : Theme.card-surface;
     border-width: 1px;
@@ -44,7 +44,7 @@ export component ListItem inherits Rectangle {
                 }
             }
             
-            VerticalBox {
+            VerticalLayout {
                 spacing: 2px;
                 alignment: center;
                 Text { text: root.title; color: root.is-active ? Theme.color-blue : Theme.text-primary; font-size: 13px; font-weight: 700; overflow: elide; }
@@ -52,7 +52,7 @@ export component ListItem inherits Rectangle {
             }
         }
         
-        if root.status-text != "" : VerticalBox {
+        if root.status-text != "" : VerticalLayout {
             alignment: center;
             Text { text: root.status-text; color: root.status-color; font-size: 11px; font-weight: 600; }
         }

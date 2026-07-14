@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use tokio::sync::Notify;
 use slint::{SharedString, ComponentHandle};
 
-use crate::{UltimateDynamicIsland, HardwareStats};
+use crate::UltimateDynamicIsland;
 
 fn get_net_bytes() -> (u64, u64) {
     if let Ok(data) = std::fs::read_to_string("/proc/net/dev") {

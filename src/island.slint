@@ -158,7 +158,7 @@ export component UltimateDynamicIsland inherits Window {
     in property <bool> wifi-enabled: false;
     in property <bool> bluetooth-enabled: false;
     in property <string> ethernet-name: "";
-    in property <float> volume-level: 50.0;
+    in-out property <float> volume-level: 50.0;
     in property <float> mic-level: 50.0;
     in property <float> brightness-level: 50.0;
     
@@ -283,7 +283,7 @@ export component UltimateDynamicIsland inherits Window {
                 media-state: root.media-state;
                 is-playing <=> root.is-playing;
                 art-rotation: root.art-rotation;
-                volume-level: root.volume-level;
+                volume-level <=> root.volume-level;
                 
                 set-volume(val) => { root.set-volume(val); }
                 media-action(action) => { root.media-action(action); }

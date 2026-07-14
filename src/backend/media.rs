@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU8, Ordering};
 use tokio::sync::Notify;
-use crate::{UltimateDynamicIsland, MediaState};
+use crate::UltimateDynamicIsland;
 use log::{info, warn};
 
 pub fn setup_media(

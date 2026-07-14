@@ -1,4 +1,4 @@
-use slint::ComponentHandle;
+
 use crate::{UltimateDynamicIsland, IslandSection};
 
 pub fn setup(ui_handle: slint::Weak<UltimateDynamicIsland>) {
