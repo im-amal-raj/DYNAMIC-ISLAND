@@ -73,16 +73,19 @@ export component ClipboardPanel inherits Rectangle {
         
         if root.clipboard-history.length > 0 : ScrollView {
             height: 175px;
+            viewport-height: root.clipboard-history.length * 60px;
             VerticalBox {
                 spacing: Theme.spacing-sm;
                 padding: 0px;
                 alignment: start;
                 
                 for item in root.clipboard-history : Rectangle {
-                    height: 52px;
-                    visible: root.filter-type == "all" || (root.filter-type == "image" && item.has_image) || (root.filter-type == "text" && !item.has_image);
+                    property <bool> is-match: root.filter-type == "all" || (root.filter-type == "image" && item.has_image) || (root.filter-type == "text" && !item.has_image);
+                    height: self.is-match ? 52px : 0px;
+                    visible: self.is-match;
+                    clip: true;
                     
-                    GlassCard {
+                    if self.is-match : GlassCard {
                         width: 100%;
                         height: 100%;
                         interactive: false;
