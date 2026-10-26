@@ -4987,6 +4987,7 @@ name = "rust-island"
 version = "0.1.0"
 dependencies = [
  "arboard",
+ "cc",
  "chrono",
  "dirs",
  "env_logger",
@@ -4994,6 +4995,7 @@ dependencies = [
  "log",
  "mpris",
  "notify-rust",
+ "raw-window-handle",
  "reqwest",
  "rodio",
  "serde",
@@ -5408,6 +5410,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "pin-weak",
+ "raw-window-handle",
  "slint-macros",
  "unicode-segmentation",
  "vtable",

@@ -1,3 +1,7 @@
+// PURPOSE: System audio mixer tab (output volume, input volume, device selector)
+// INPUTS: volume-level, mic-level, audio-sinks, audio-sources
+// USED BY: controls_panel.slint
+
 import { Theme } from "../../theme.slint";
 import { AudioDevice } from "../../types.slint";
 import { HorizontalBox, VerticalBox, ScrollView, ListView } from "std-widgets.slint";
@@ -31,9 +35,7 @@ export component AudioTab inherits Rectangle {
             
             SliderControl {
                 icon-source: @image-url("../../../../assets/icons/volume-2-light.svg");
-                icon-color: Theme.color-indigo;
                 value: root.volume-level;
-                active-gradient: @linear-gradient(90deg, #0a84ff 0%, #bf5af2 100%);
                 changed(val) => { root.set-volume(val); }
             }
             
@@ -46,9 +48,9 @@ export component AudioTab inherits Rectangle {
                     for dev in root.audio-sinks : Rectangle {
                         height: 36px;
                         border-radius: Theme.card-radius-small;
-                        background: dev.is_default ? rgba(191, 90, 242, 0.15) : Theme.card-surface;
+                        background: dev.is_default ? rgba(255, 255, 255, 0.12) : Theme.card-surface;
                         border-width: 1px;
-                        border-color: dev.is_default ? rgba(191, 90, 242, 0.3) : Theme.border-color;
+                        border-color: dev.is_default ? rgba(255, 255, 255, 0.20) : Theme.border-color;
                         
                         TouchArea {
                             clicked => { root.set-default-audio(dev.id); }
@@ -59,7 +61,7 @@ export component AudioTab inherits Rectangle {
                             padding-right: Theme.spacing-sm;
                             alignment: space-between;
                             Text { text: dev.name; color: Theme.text-primary; font-size: 11px; vertical-alignment: center; }
-                            if dev.is_default : Text { text: "Active"; color: Theme.color-indigo; font-size: 10px; font-weight: 700; vertical-alignment: center; }
+                            if dev.is_default : Text { text: "Active"; color: Theme.color-blue; font-size: 10px; font-weight: 700; vertical-alignment: center; }
                         }
                     }
                 }
@@ -77,9 +79,7 @@ export component AudioTab inherits Rectangle {
             
             SliderControl {
                 icon-source: @image-url("../../../../assets/icons/mic-light.svg");
-                icon-color: Theme.color-orange;
                 value: root.mic-level;
-                active-gradient: @linear-gradient(90deg, #ff9f0a 0%, #ff453a 100%);
                 changed(val) => { root.set-mic-volume(val); }
             }
             
@@ -93,9 +93,9 @@ export component AudioTab inherits Rectangle {
                     for dev in root.audio-sources : Rectangle {
                         height: 36px;
                         border-radius: Theme.card-radius-small;
-                        background: dev.is_default ? rgba(255, 159, 10, 0.15) : Theme.card-surface;
+                        background: dev.is_default ? rgba(255, 255, 255, 0.12) : Theme.card-surface;
                         border-width: 1px;
-                        border-color: dev.is_default ? rgba(255, 159, 10, 0.3) : Theme.border-color;
+                        border-color: dev.is_default ? rgba(255, 255, 255, 0.20) : Theme.border-color;
                     
                         TouchArea {
                             // Note: Might need set-default-input in the future
@@ -106,7 +106,7 @@ export component AudioTab inherits Rectangle {
                             padding-right: Theme.spacing-sm;
                             alignment: space-between;
                             Text { text: dev.name; color: Theme.text-primary; font-size: 11px; vertical-alignment: center; }
-                            if dev.is_default : Text { text: "Active"; color: Theme.color-orange; font-size: 10px; font-weight: 700; vertical-alignment: center; }
+                            if dev.is_default : Text { text: "Active"; color: Theme.color-blue; font-size: 10px; font-weight: 700; vertical-alignment: center; }
                         }
                     }
                 }

@@ -55,22 +55,23 @@ pub fn setup(
     let notify_clone = notify.clone();
     
     tokio::spawn(async move {
+        let mut last_vol = -1.0f32;
         loop {
             let section_u8 = active_section_clone.load(Ordering::SeqCst);
             // 4 is SysControls
             let is_controls = section_u8 == 4;
             
-            if is_controls {
-                let mut vol_val = 50.0;
-                if let Ok(out) = std::process::Command::new("wpctl").args(&["get-volume", "@DEFAULT_AUDIO_SINK@"]).output() {
-                    let s = String::from_utf8_lossy(&out.stdout);
-                    if let Some(v_str) = s.split_whitespace().nth(1) {
-                        if let Ok(v) = v_str.parse::<f32>() {
-                            vol_val = v * 100.0;
-                        }
+            let mut vol_val = 50.0;
+            if let Ok(out) = std::process::Command::new("wpctl").args(&["get-volume", "@DEFAULT_AUDIO_SINK@"]).output() {
+                let s = String::from_utf8_lossy(&out.stdout);
+                if let Some(v_str) = s.split_whitespace().nth(1) {
+                    if let Ok(v) = v_str.parse::<f32>() {
+                        vol_val = v * 100.0;
                     }
                 }
-                
+            }
+            
+            if is_controls {
                 let mut mic_val = 50.0;
                 if let Ok(out) = std::process::Command::new("wpctl").args(&["get-volume", "@DEFAULT_AUDIO_SOURCE@"]).output() {
                     let s = String::from_utf8_lossy(&out.stdout);
@@ -89,6 +90,7 @@ pub fn setup(
                     sources = parse_wpctl_devices(&status_s, "Sources:");
                 }
                 
+                last_vol = vol_val;
                 let _ = slint::invoke_from_event_loop({
                     let ui_handle = ui_handle.clone();
                     move || {
@@ -102,13 +104,21 @@ pub fn setup(
                         }
                     }
                 });
-                
-                tokio::select! {
-                    _ = tokio::time::sleep(Duration::from_millis(500)) => {}
-                    _ = notify_clone.notified() => {}
-                }
-            } else {
-                notify_clone.notified().await;
+            } else if (vol_val - last_vol).abs() > 0.5 {
+                last_vol = vol_val;
+                let _ = slint::invoke_from_event_loop({
+                    let ui_handle = ui_handle.clone();
+                    move || {
+                        if let Some(ui) = ui_handle.upgrade() {
+                            ui.set_volume_level(vol_val);
+                        }
+                    }
+                });
+            }
+            
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_millis(if is_controls { 300 } else { 1000 })) => {}
+                _ = notify_clone.notified() => {}
             }
         }
     });

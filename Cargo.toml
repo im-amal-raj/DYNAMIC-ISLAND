@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-slint = "1.9"
+slint = { version = "1.9", features = ["raw-window-handle-06"] }
+raw-window-handle = "0.6"
 tokio = { version = "1.38", features = ["full"] }
 sysinfo = "0.30"
 arboard = "3.4"
@@ -24,3 +25,4 @@ notify-rust = "4"
 
 [build-dependencies]
 slint-build = "1.9"
+cc = "1.0"

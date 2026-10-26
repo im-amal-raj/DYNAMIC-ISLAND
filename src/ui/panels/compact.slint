@@ -1,3 +1,7 @@
+// PURPOSE: Rest-state compact island pill with clock, battery, and media status
+// INPUTS: clock-time, battery-level, media-state, has-active-media
+// USED BY: src/island.slint
+
 import { Theme } from "../theme.slint";
 import { IslandSection, HardwareStats, MediaState } from "../types.slint";
 import { CircularProgress } from "../components/circular_progress.slint";
@@ -9,6 +13,9 @@ export component CompactPanel inherits HorizontalLayout {
     in property <HardwareStats> hardware-stats;
     in property <bool> is-playing: false;
     in property <bool> has-new-notification: false;
+    in property <bool> show-hud-peek: false;
+    in property <string> hud-peek-icon: "volume";
+    in property <float> hud-peek-value: 50.0;
     in property <string> current-date-string: "";
     in property <string> current-time-string: "";
     in property <string> peek-notif-summary: "";
@@ -23,20 +30,56 @@ export component CompactPanel inherits HorizontalLayout {
     
     // Left Pill (Time/Date & CPU/Memory status)
     Rectangle {
-        width: root.is-playing ? (parent.width - (root.right-pill-hovered ? 190px : 46px)) : parent.width;
+        width: root.is-playing ? (parent.width - (root.right-pill-hovered ? 172px : 64px)) : parent.width;
         height: parent.height;
         background: Theme.glass-gradient;
         border-color: Theme.border-gradient;
         border-width: 1px;
         border-radius: self.height / 2;
         
-        animate width { duration: Theme.standard-duration; easing: Theme.standard-easing; }
+        animate width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
         
         HorizontalBox {
             alignment: center;
             spacing: 8px;
             
-            if !root.has-new-notification : HorizontalLayout {
+            // Transient Volume / Brightness Micro HUD Peek
+            if root.show-hud-peek : HorizontalLayout {
+                spacing: 8px;
+                alignment: center;
+                
+                Image {
+                    width: 14px; height: 14px;
+                    source: root.hud-peek-icon == "volume" ? @image-url("../../../assets/icons/volume-2-light.svg") : @image-url("../../../assets/icons/sun-light.svg");
+                    colorize: Theme.text-primary;
+                    vertical-alignment: center;
+                }
+                
+                Rectangle {
+                    width: 76px; height: 6px;
+                    border-radius: 3px;
+                    background: rgba(255, 255, 255, 0.15);
+                    clip: true;
+                    
+                    Rectangle {
+                        width: parent.width * Math.max(0.0, Math.min(1.0, root.hud-peek-value / 100.0));
+                        height: 100%;
+                        background: Theme.text-primary;
+                        border-radius: 3px;
+                        animate width { duration: 150ms; easing: ease-out; }
+                    }
+                }
+                
+                Text {
+                    text: Math.round(root.hud-peek-value) + "%";
+                    color: Theme.text-primary;
+                    font-size: 11px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                }
+            }
+
+            if !root.show-hud-peek && !root.has-new-notification : HorizontalLayout {
                 spacing: 8px;
                 alignment: center;
                 
@@ -103,7 +146,7 @@ export component CompactPanel inherits HorizontalLayout {
                 }
             }
             
-            if root.has-new-notification : HorizontalBox {
+            if !root.show-hud-peek && root.has-new-notification : HorizontalBox {
                 spacing: 6px;
                 alignment: center;
                 Image {

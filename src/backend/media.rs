@@ -45,6 +45,7 @@ pub fn setup_media(
         let mut is_media_playing = false;
         let mut last_youtube_title = String::new();
         let mut last_youtube_id = String::new();
+        let mut last_logged_track = String::new();
         
         loop {
             let section_u8 = media_active_section.load(Ordering::SeqCst);
@@ -102,10 +103,14 @@ pub fn setup_media(
             }
 
             if let Some((bus_name, title, artist, mut art_url, raw_url, is_playing, pos, len)) = play_info {
-                crate::backend::log_to_file(&format!(
-                    "Media Loop: player={}, title='{}', artist='{}', raw_art_url='{}', raw_url='{}'",
-                    bus_name, title, artist, art_url, raw_url
-                ));
+                let track_sig = format!("{}:{}:{}", bus_name, title, is_playing);
+                if track_sig != last_logged_track {
+                    crate::backend::log_to_file(&format!(
+                        "Media Loop: player={}, title='{}', artist='{}', raw_art_url='{}', raw_url='{}', playing={}",
+                        bus_name, title, artist, art_url, raw_url, is_playing
+                    ));
+                    last_logged_track = track_sig;
+                }
                 
                 let is_browser = bus_name.contains("chrome") || 
                                  bus_name.contains("chromium") || 
@@ -152,7 +157,7 @@ pub fn setup_media(
                             ));
                         }
                     } else {
-                        crate::backend::log_to_file("Media Loop: art_url and raw_url are both empty");
+                        // Empty URLs are common for idle browser players; do not flood the debug log
                     }
                 }
                 

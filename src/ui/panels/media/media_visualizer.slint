@@ -1,0 +1,50 @@
+// PURPOSE: 5-bar animated audio equalizer visualizer
+// INPUTS: is-playing (bool), art-rotation (angle)
+// USED BY: src/ui/panels/media.slint
+
+import { Theme } from "../../theme.slint";
+
+export component MediaVisualizer inherits HorizontalLayout {
+    in property <bool> is-playing: false;
+    in property <angle> art-rotation: 0deg;
+
+    spacing: Theme.spacing-xs;
+    alignment: end;
+    height: 20px;
+
+    Rectangle { 
+        width: 3px; 
+        height: root.is-playing ? (6px + 10px * Math.sin(root.art-rotation * 4)) : 6px; 
+        background: Theme.text-tertiary; 
+        border-radius: 1.5px;
+        y: parent.height - self.height;
+    }
+    Rectangle { 
+        width: 3px; 
+        height: root.is-playing ? (4px + 14px * Math.sin(root.art-rotation * 6 + 45deg)) : 8px; 
+        background: Theme.text-tertiary; 
+        border-radius: 1.5px;
+        y: parent.height - self.height;
+    }
+    Rectangle { 
+        width: 3px; 
+        height: root.is-playing ? (8px + 11px * Math.sin(root.art-rotation * 3 - 30deg)) : 5px; 
+        background: Theme.text-tertiary; 
+        border-radius: 1.5px;
+        y: parent.height - self.height;
+    }
+    Rectangle { 
+        width: 3px; 
+        height: root.is-playing ? (5px + 13px * Math.sin(root.art-rotation * 5 + 90deg)) : 7px; 
+        background: Theme.text-tertiary; 
+        border-radius: 1.5px;
+        y: parent.height - self.height;
+    }
+    Rectangle { 
+        width: 3px; 
+        height: root.is-playing ? (7px + 9px * Math.sin(root.art-rotation * 2.5 + 60deg)) : 6px; 
+        background: Theme.text-tertiary; 
+        border-radius: 1.5px;
+        y: parent.height - self.height;
+    }
+}

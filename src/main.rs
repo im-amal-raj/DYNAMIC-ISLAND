@@ -28,10 +28,7 @@ impl IslandControl {
             }
         });
         
-        let _ = std::process::Command::new("sh")
-            .arg("-c")
-            .arg("niri msg action focus-window --id $(niri msg --json windows | jq '.[] | select(.title==\"dynamic-island\") | .id' | head -n 1)")
-            .spawn();
+        backend::umbriel::focus_island_window();
     }
 }
 
@@ -88,6 +85,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ui = UltimateDynamicIsland::new()?;
     let active_section_shared = Arc::new(AtomicU8::new(section_to_u8(ui.get_active_section())));
     
+    let update_input_bounds = {
+        let ui_w = ui.as_weak();
+        move || {
+            use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
+            if let Some(ui) = ui_w.upgrade() {
+                let handle = ui.window().window_handle();
+                if let (Ok(wh), Ok(dh)) = (handle.window_handle(), handle.display_handle()) {
+                    if let (RawWindowHandle::Wayland(w), RawDisplayHandle::Wayland(d)) = (wh.as_raw(), dh.as_raw()) {
+                        let sec = ui.get_active_section();
+                        if sec == IslandSection::Compact {
+                            let w_val = ui.get_target_width() as i32;
+                            let x = ((420 - w_val) / 2).max(0);
+                            crate::backend::wayland_input::update_input_region(d.display.as_ptr(), w.surface.as_ptr(), x, 0, w_val, 42);
+                        } else {
+                            crate::backend::wayland_input::update_input_region(d.display.as_ptr(), w.surface.as_ptr(), 0, 0, 420, 385);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    // Schedule initial input region config once window is mapped in the event loop
+    {
+        let update_clone_init = update_input_bounds.clone();
+        let _ = slint::invoke_from_event_loop(move || {
+            update_clone_init();
+        });
+    }
+
+    crate::backend::log_to_file(&format!("STARTUP: initial active_section={}, target_w={}, target_h={}", section_to_u8(ui.get_active_section()), ui.get_target_width(), ui.get_target_height()));
+
+    {
+        let update_input_clone = update_input_bounds.clone();
+        ui.on_window_size_changed(move |_w, _h| {
+            update_input_clone();
+        });
+    }
+    
     let mixers_notify = Arc::new(Notify::new());
     let conn_notify = Arc::new(Notify::new());
     let tray_notify = Arc::new(Notify::new());
@@ -101,7 +137,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let tray_n = tray_notify.clone();
         let hardware_n = hardware_notify.clone();
         let media_n = media_notify.clone();
+        let update_input_clone = update_input_bounds.clone();
         ui.on_active_section_changed(move |sec| {
+            crate::backend::log_to_file(&format!("ACTIVE SECTION CHANGED: {}", section_to_u8(sec)));
+            update_input_clone();
             active_section_clone.store(section_to_u8(sec), Ordering::SeqCst);
             mixers_n.notify_one();
             conn_n.notify_one();
@@ -167,8 +206,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     backend::handlers::system_tray::setup(&ui, dbus_conn.clone());
     backend::handlers::sys_controls::setup(&ui);
 
-    // Setup Niri focus listener for auto-dismiss
-    backend::niri::setup(ui_handle.clone());
+    // Setup Umbriel/Compositor focus listener for auto-dismiss
+    backend::umbriel::setup(ui_handle.clone());
 
     ui.run()?;
     Ok(())

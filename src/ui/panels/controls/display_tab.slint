@@ -1,3 +1,7 @@
+// PURPOSE: Display brightness slider tab
+// INPUTS: brightness-level (float), set-brightness callback
+// USED BY: controls_panel.slint
+
 import { Theme } from "../../theme.slint";
 import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
 import { SectionHeader } from "../../components/section_header.slint";
@@ -18,9 +22,7 @@ export component DisplayTab inherits Rectangle {
         
         SliderControl {
             icon-source: @image-url("../../../../assets/icons/sun-light.svg");
-            icon-color: Theme.color-orange;
             value: root.brightness-level;
-            active-gradient: @linear-gradient(90deg, #ffd60a 0%, #ff9f0a 100%);
             changed(val) => { root.set-brightness(val); }
         }
     }

@@ -1,3 +1,7 @@
+// PURPOSE: Clipboard history browser with search and copy triggers
+// INPUTS: history-items ([ClipItem]), copy-item/clear-history callbacks
+// USED BY: src/island.slint
+
 import { Theme } from "../theme.slint";
 import { ClipItem } from "../types.slint";
 import { GlassCard } from "../components/glass_card.slint";
@@ -5,9 +9,11 @@ import { HorizontalBox, VerticalBox, ScrollView, ListView } from "std-widgets.sl
 import { SectionHeader } from "../components/section_header.slint";
 import { SearchField } from "../components/search_field.slint";
 import { EmptyState } from "../components/empty_state.slint";
+import { PillTabs, TabItem } from "../components/pill_tabs.slint";
 
 export component ClipboardPanel inherits Rectangle {
     in property <[ClipItem]> clipboard-history;
+    in-out property <string> filter-type: "all";
     
     callback clear-clipboard();
     callback search-clipboard(string);
@@ -38,6 +44,21 @@ export component ClipboardPanel inherits Rectangle {
             }
         }
         
+        HorizontalLayout {
+            alignment: center;
+            PillTabs {
+                active-tab: root.filter-type;
+                tabs: [
+                    { id: "all", label: "All" },
+                    { id: "text", label: "Text" },
+                    { id: "image", label: "Images" }
+                ];
+                tab-selected(id) => {
+                    root.filter-type = id;
+                }
+            }
+        }
+        
         SearchField {
             placeholder-text: "Search clipboard...";
             changed text => {
@@ -50,67 +71,81 @@ export component ClipboardPanel inherits Rectangle {
             message: "Nothing copied yet";
         }
         
-        if root.clipboard-history.length > 0 : ListView {
-            for item in root.clipboard-history : ta := TouchArea {
-                height: 62px;
-                property <float> current-scale: self.pressed ? 0.95 : (self.has-hover ? 1.02 : 1.0);
-                animate current-scale { duration: Theme.micro-duration; easing: Theme.standard-easing; }
-                clicked => { root.paste-clip(item.id); }
+        if root.clipboard-history.length > 0 : ScrollView {
+            height: 175px;
+            VerticalBox {
+                spacing: Theme.spacing-sm;
+                padding: 0px;
+                alignment: start;
                 
-                GlassCard {
-                    interactive: true;
-                    width: parent.width * parent.current-scale;
-                    height: 54px * parent.current-scale;
-                    x: (parent.width - self.width) / 2;
-                    y: (parent.height - self.height) / 2;
+                for item in root.clipboard-history : Rectangle {
+                    height: 52px;
+                    visible: root.filter-type == "all" || (root.filter-type == "image" && item.has_image) || (root.filter-type == "text" && !item.has_image);
                     
-                    // Inline Erase Button on Hover
-                    if ta.has-hover : Rectangle {
-                        width: 22px; height: 22px;
-                        border-radius: 11px;
-                        background: erase_ta.has-hover ? rgba(255, 59, 48, 0.2) : transparent;
-                        x: parent.width - self.width - Theme.spacing-md;
-                        y: (parent.height - self.height) / 2;
-                        z: 10;
+                    GlassCard {
+                        width: 100%;
+                        height: 100%;
+                        interactive: false;
+                        border-color: ta.has-hover ? Theme.card-border-hover : Theme.card-border;
+                        background: ta.pressed ? Theme.card-surface-active : (ta.has-hover ? Theme.card-surface-hover : Theme.card-surface);
                         
-                        Image {
-                            width: 14px; height: 14px;
-                            source: @image-url("../../../assets/icons/x-light.svg");
-                            colorize: erase_ta.has-hover ? Theme.color-red : Theme.text-tertiary;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
+                        ta := TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            clicked => { root.paste-clip(item.id); }
                         }
                         
-                        erase_ta := TouchArea {
-                            clicked => {
-                                root.erase-clip(item.id);
+                        // Inline Erase Button on Hover
+                        if ta.has-hover : Rectangle {
+                            width: 22px; height: 22px;
+                            border-radius: 11px;
+                            background: erase_ta.has-hover ? rgba(255, 59, 48, 0.25) : transparent;
+                            x: parent.width - self.width - Theme.spacing-md;
+                            y: (parent.height - self.height) / 2;
+                            z: 10;
+                            
+                            Image {
+                                width: 14px; height: 14px;
+                                source: @image-url("../../../assets/icons/x-light.svg");
+                                colorize: erase_ta.has-hover ? Theme.color-red : Theme.text-tertiary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                            
+                            erase_ta := TouchArea {
+                                width: 100%; height: 100%;
+                                clicked => {
+                                    root.erase-clip(item.id);
+                                }
                             }
                         }
-                    }
-                    
-                    HorizontalBox {
-                        padding: Theme.spacing-md;
-                        padding-right: 36px;
-                        alignment: start;
-                        spacing: Theme.spacing-md;
                         
-                        if item.has_image : Image {
-                            width: 34px; height: 34px;
-                            source: item.image_data;
-                            image-fit: cover;
-                        }
-                        if !item.has_image : Image {
-                            width: 16px; height: 16px;
-                            source: @image-url("../../../assets/icons/clipboard-light.svg");
-                            colorize: Theme.text-secondary;
-                        }
-                        
-                        Text { 
-                            text: item.text; 
-                            color: Theme.text-primary; 
-                            font-size: 13px; 
-                            vertical-alignment: center;
-                            overflow: elide;
+                        HorizontalBox {
+                            width: 100%;
+                            height: 100%;
+                            padding-left: Theme.spacing-md;
+                            padding-right: 36px;
+                            alignment: start;
+                            spacing: Theme.spacing-md;
+                            
+                            if item.has_image : Image {
+                                width: 34px; height: 34px;
+                                source: item.image_data;
+                                image-fit: cover;
+                            }
+                            if !item.has_image : Image {
+                                width: 16px; height: 16px;
+                                source: @image-url("../../../assets/icons/clipboard-light.svg");
+                                colorize: Theme.text-secondary;
+                            }
+                            
+                            Text { 
+                                text: item.text; 
+                                color: Theme.text-primary; 
+                                font-size: 13px; 
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
                         }
                     }
                 }

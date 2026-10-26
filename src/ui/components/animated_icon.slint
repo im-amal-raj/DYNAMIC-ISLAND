@@ -1,16 +1,20 @@
+// PURPOSE: Haptic-scaling path icon with hover micro-interaction
+// INPUTS: commands (string), fill (color), icon-size (length)
+// USED BY: media_controls.slint, island.slint
+
 import { Theme } from "../theme.slint";
 
 export component AnimatedIcon inherits TouchArea {
     in property <string> commands;
-    in property <color> fill: #ffffff;
+    in property <color> fill: Theme.text-primary;
     in property <length> icon-size: 16px;
     
-    width: 24px;
-    height: 24px;
+    width: Theme.touch-target-min;
+    height: Theme.touch-target-min;
     
     // Haptic scale effect
     property <float> current-scale: self.pressed ? 0.85 : (self.has-hover ? 1.05 : 1.0);
-    animate current-scale { duration: 150ms; easing: Theme.fade-easing; }
+    animate current-scale { duration: Theme.micro-duration; easing: Theme.micro-easing; }
     
     Path {
         commands: root.commands;
@@ -20,7 +24,7 @@ export component AnimatedIcon inherits TouchArea {
         height: root.icon-size * root.current-scale * 1.3;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        animate opacity { duration: 150ms; easing: Theme.fade-easing; }
+        animate opacity { duration: Theme.micro-duration; easing: Theme.micro-easing; }
     }
     
     Path {

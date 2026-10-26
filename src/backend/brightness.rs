@@ -6,6 +6,25 @@ use slint::ComponentHandle;
 
 use crate::UltimateDynamicIsland;
 
+fn get_sysfs_brightness() -> Option<f32> {
+    if let Ok(entries) = std::fs::read_dir("/sys/class/backlight") {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let actual = std::fs::read_to_string(path.join("actual_brightness"))
+                .or_else(|_| std::fs::read_to_string(path.join("brightness")));
+            let max = std::fs::read_to_string(path.join("max_brightness"));
+            if let (Ok(act_s), Ok(max_s)) = (actual, max) {
+                if let (Ok(act_val), Ok(max_val)) = (act_s.trim().parse::<f32>(), max_s.trim().parse::<f32>()) {
+                    if max_val > 0.0 {
+                        return Some((act_val / max_val) * 100.0);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn setup(
     ui: &UltimateDynamicIsland,
     active_section: Arc<AtomicU8>,
@@ -16,25 +35,29 @@ pub fn setup(
     let notify_clone = notify.clone();
     
     tokio::spawn(async move {
+        let mut last_reported = -1.0f32;
         loop {
             let section_u8 = active_section_clone.load(Ordering::SeqCst);
             // 4 is SysControls
             let is_controls = section_u8 == 4;
             
-            if is_controls {
-                let mut bright_val = 50.0;
-                if let Ok(get_out) = std::process::Command::new("brightnessctl").arg("get").output() {
-                    if let Ok(max_out) = std::process::Command::new("brightnessctl").arg("max").output() {
-                        let get_s = String::from_utf8_lossy(&get_out.stdout);
-                        let max_s = String::from_utf8_lossy(&max_out.stdout);
-                        if let (Ok(g), Ok(m)) = (get_s.trim().parse::<f32>(), max_s.trim().parse::<f32>()) {
-                            if m > 0.0 {
-                                bright_val = (g / m) * 100.0;
-                            }
+            let mut bright_val = 50.0;
+            if let Some(val) = get_sysfs_brightness() {
+                bright_val = val;
+            } else if let Ok(get_out) = std::process::Command::new("brightnessctl").arg("get").output() {
+                if let Ok(max_out) = std::process::Command::new("brightnessctl").arg("max").output() {
+                    let get_s = String::from_utf8_lossy(&get_out.stdout);
+                    let max_s = String::from_utf8_lossy(&max_out.stdout);
+                    if let (Ok(g), Ok(m)) = (get_s.trim().parse::<f32>(), max_s.trim().parse::<f32>()) {
+                        if m > 0.0 {
+                            bright_val = (g / m) * 100.0;
                         }
                     }
                 }
-                
+            }
+            
+            if (bright_val - last_reported).abs() > 0.5 {
+                last_reported = bright_val;
                 let _ = slint::invoke_from_event_loop({
                     let ui_handle = ui_handle.clone();
                     move || {
@@ -43,13 +66,11 @@ pub fn setup(
                         }
                     }
                 });
-                
-                tokio::select! {
-                    _ = tokio::time::sleep(Duration::from_millis(500)) => {}
-                    _ = notify_clone.notified() => {}
-                }
-            } else {
-                notify_clone.notified().await;
+            }
+            
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_millis(if is_controls { 300 } else { 1200 })) => {}
+                _ = notify_clone.notified() => {}
             }
         }
     });

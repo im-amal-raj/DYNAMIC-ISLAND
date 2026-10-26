@@ -1,0 +1,73 @@
+// PURPOSE: Interactive media playback controls (prev, play/pause, next)
+// INPUTS: is-playing (bool), media-action callback
+// USED BY: src/ui/panels/media.slint
+
+import { Theme } from "../../theme.slint";
+import { AnimatedIcon } from "../../components/animated_icon.slint";
+
+export component MediaControls inherits HorizontalLayout {
+    in-out property <bool> is-playing: false;
+    callback media-action(string);
+
+    alignment: center;
+    spacing: 40px;
+
+    VerticalLayout {
+        alignment: center;
+        AnimatedIcon {
+            icon-size: 16px;
+            commands: "M 12 0 L 2 6 L 12 12 Z M 2 0 L 0 0 L 0 12 L 2 12 Z";
+            clicked => { root.media-action("previous"); }
+        }
+    }
+
+    VerticalLayout {
+        alignment: center;
+        ta_play_pause := TouchArea {
+            width: 44px; height: 44px;
+            property <float> current-scale: self.pressed ? 0.88 : (self.has-hover ? 1.05 : 1.0);
+            animate current-scale { duration: Theme.micro-duration; easing: Theme.micro-easing; }
+            clicked => { 
+                root.media-action("play-pause"); 
+                root.is-playing = !root.is-playing; 
+            }
+
+            Rectangle {
+                width: 44px * ta_play_pause.current-scale; 
+                height: 44px * ta_play_pause.current-scale;
+                border-radius: self.width / 2;
+                background: Theme.card-surface-active;
+                border-width: 1px;
+                border-color: Theme.card-border-hover;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+
+                if root.is-playing : HorizontalLayout {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: 12px; height: 14px;
+                    spacing: Theme.spacing-xs;
+                    Rectangle { width: 4px; height: 14px; background: Theme.text-primary; border-radius: 1px; }
+                    Rectangle { width: 4px; height: 14px; background: Theme.text-primary; border-radius: 1px; }
+                }
+                if !root.is-playing : Path {
+                    x: (parent.width - self.width) / 2 + 1.5px;
+                    y: (parent.height - self.height) / 2;
+                    width: 12px; height: 14px;
+                    viewbox-width: 12; viewbox-height: 14;
+                    fill: Theme.text-primary;
+                    commands: "M 0 0 L 12 7 L 0 14 Z";
+                }
+            }
+        }
+    }
+
+    VerticalLayout {
+        alignment: center;
+        AnimatedIcon {
+            icon-size: 16px;
+            commands: "M 0 0 L 10 6 L 0 12 Z M 10 0 L 12 0 L 12 12 L 10 12 Z";
+            clicked => { root.media-action("next"); }
+        }
+    }
+}

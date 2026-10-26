@@ -18,16 +18,30 @@ pub fn setup(
     let notify_clone = notify.clone();
     
     tokio::spawn(async move {
+        let mut is_first_run = true;
         loop {
             let section_u8 = active_section_clone.load(Ordering::SeqCst);
             // 4 is SysControls
             let is_controls = section_u8 == 4;
             
-            if is_controls {
+            if is_controls || is_first_run {
+                is_first_run = false;
                 let bt_out = std::process::Command::new("bluetoothctl").arg("show").output();
                 let bt_enabled = if let Ok(out) = bt_out {
                     String::from_utf8_lossy(&out.stdout).contains("Powered: yes")
                 } else { false };
+                
+                let connected_set: std::collections::HashSet<String> = if let Ok(out) = std::process::Command::new("bluetoothctl").args(&["devices", "Connected"]).output() {
+                    let s = String::from_utf8_lossy(&out.stdout);
+                    s.lines().filter_map(|l| {
+                        let parts: Vec<&str> = l.splitn(3, ' ').collect();
+                        if parts.len() >= 2 && parts[0] == "Device" {
+                            Some(parts[1].to_string())
+                        } else { None }
+                    }).collect()
+                } else {
+                    std::collections::HashSet::new()
+                };
                 
                 let bt_devices_out = std::process::Command::new("bluetoothctl").arg("devices").output();
                 let mut bt_devices = Vec::new();
@@ -38,12 +52,7 @@ pub fn setup(
                         if parts.len() == 3 && parts[0] == "Device" {
                             let mac = parts[1].to_string();
                             let name = parts[2].to_string();
-                            
-                            let info_out = std::process::Command::new("bluetoothctl").arg("info").arg(&mac).output();
-                            let is_connected = if let Ok(info) = info_out {
-                                String::from_utf8_lossy(&info.stdout).contains("Connected: yes")
-                            } else { false };
-                            
+                            let is_connected = connected_set.contains(&mac);
                             bt_devices.push((name, mac, is_connected));
                         }
                     }

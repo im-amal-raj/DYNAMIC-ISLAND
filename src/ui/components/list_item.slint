@@ -1,3 +1,7 @@
+// PURPOSE: Interactive list row with primary/secondary text and trailing widget
+// INPUTS: title (string), subtitle (string), icon (image), is-selected (bool)
+// USED BY: clipboard.slint, base_device_list_tab.slint, app_launcher.slint
+
 import { Theme } from "../theme.slint";
 import { HorizontalBox, VerticalBox } from "std-widgets.slint";
 
@@ -17,7 +21,7 @@ export component ListItem inherits Rectangle {
     border-radius: Theme.card-radius-small;
     background: ta.has-hover ? Theme.card-surface-hover : Theme.card-surface;
     border-width: 1px;
-    border-color: root.is-active ? Theme.color-blue : (ta.has-hover ? Theme.card-border-hover : Theme.card-border);
+    border-color: root.is-active ? Theme.card-border-hover : (ta.has-hover ? Theme.card-border-hover : Theme.card-border);
     animate background, border-color { duration: Theme.micro-duration; }
     
     ta := TouchArea {
@@ -36,25 +40,27 @@ export component ListItem inherits Rectangle {
             Rectangle {
                 width: 28px; height: 28px;
                 border-radius: 6px;
-                background: root.is-active ? Theme.color-blue : rgba(255, 255, 255, 0.1);
+                background: root.is-active ? rgba(10, 132, 255, 0.15) : rgba(255, 255, 255, 0.06);
+                border-width: 1px;
+                border-color: root.is-active ? rgba(10, 132, 255, 0.3) : Theme.border-color;
                 Image {
                     width: 14px; height: 14px;
                     source: root.icon;
-                    colorize: root.is-active ? Theme.surface-primary : Theme.text-secondary;
+                    colorize: root.is-active ? Theme.color-blue : Theme.text-secondary;
                 }
             }
             
             VerticalLayout {
                 spacing: 2px;
                 alignment: center;
-                Text { text: root.title; color: root.is-active ? Theme.color-blue : Theme.text-primary; font-size: 13px; font-weight: 700; overflow: elide; }
+                Text { text: root.title; color: Theme.text-primary; font-size: 13px; font-weight: 700; overflow: elide; }
                 if root.subtitle != "" : Text { text: root.subtitle; color: Theme.text-secondary; font-size: 11px; overflow: elide; }
             }
         }
         
         if root.status-text != "" : VerticalLayout {
             alignment: center;
-            Text { text: root.status-text; color: root.status-color; font-size: 11px; font-weight: 600; }
+            Text { text: root.status-text; color: root.is-active ? Theme.color-blue : root.status-color; font-size: 11px; font-weight: 600; }
         }
     }
 }

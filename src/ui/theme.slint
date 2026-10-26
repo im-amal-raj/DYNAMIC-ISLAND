@@ -1,3 +1,7 @@
+// PURPOSE: Central design system tokens (colors, typography, spacing, motion)
+// INPUTS: None (global export)
+// USED BY: All UI components and panels across rust-island
+
 export global Theme {
     // V3 Theme: Restrained Elegance (Apple-style monochrome)
     
@@ -48,19 +52,19 @@ export global Theme {
     in-out property <length> icon-size-lg: 24px;
     in-out property <length> touch-target-min: 32px;
 
-    // Fluid Motion System
+    // Fluid Motion System (Calibrated Apple SwiftUI Spring: response=0.35s, damping=0.75)
     in-out property <duration> micro-duration: 120ms;
     in-out property <easing> micro-easing: ease-out;
 
-    in-out property <duration> standard-duration: 240ms;
-    in-out property <easing> standard-easing: cubic-bezier(0.16, 1, 0.3, 1);
+    in-out property <duration> standard-duration: 300ms;
+    in-out property <easing> standard-easing: cubic-bezier(0.16, 1.0, 0.3, 1.0);
 
-    in-out property <duration> dramatic-duration: 400ms;
-    in-out property <easing> dramatic-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+    in-out property <duration> dramatic-duration: 350ms;
+    in-out property <easing> dramatic-easing: cubic-bezier(0.16, 1.0, 0.3, 1.028); // 2.8% physics overshoot
 
     // Legacy names (alias to standard/micro to maintain compatibility during refactor)
-    in-out property <duration> spring-duration: 240ms;
-    in-out property <easing> spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
+    in-out property <duration> spring-duration: 300ms;
+    in-out property <easing> spring-easing: cubic-bezier(0.16, 1.0, 0.3, 1.0);
     
     in-out property <duration> fade-duration: 120ms;
     in-out property <easing> fade-easing: ease-out;

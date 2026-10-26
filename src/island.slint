@@ -1,3 +1,7 @@
+// PURPOSE: Main island shell, active panel routing, and global dismiss container
+// INPUTS: active-section, system states, and cross-panel callbacks
+// USED BY: src/main.rs (UltimateDynamicIsland component handle)
+
 import { HorizontalBox, VerticalBox, ListView, ScrollView, Slider, LineEdit } from "std-widgets.slint";
 import { Theme } from "ui/theme.slint";
 import { IslandPill } from "ui/components/island_pill.slint";
@@ -34,18 +38,18 @@ export component UltimateDynamicIsland inherits Window {
     in-out property <bool> chime-on-due: true;
     changed is-playing => {
         if (active-section == IslandSection.Compact) {
-            root.target-width = root.is-playing ? (root.right-pill-hovered ? 400px : 256px) : 220px;
+            root.target-width = root.is-playing ? (root.right-pill-hovered ? 390px : 270px) : 220px;
         }
     }
     changed right-pill-hovered => {
         if (active-section == IslandSection.Compact) {
-            root.target-width = root.is-playing ? (root.right-pill-hovered ? 400px : 256px) : 220px;
+            root.target-width = root.is-playing ? (root.right-pill-hovered ? 390px : 270px) : 220px;
         }
     }
     
     changed active-section => {
         if (active-section == IslandSection.Compact) {
-            root.target-width = root.is-playing ? (root.right-pill-hovered ? 400px : 256px) : 220px;
+            root.target-width = root.is-playing ? (root.right-pill-hovered ? 390px : 270px) : 220px;
             root.target-height = 42px;
         } else if (active-section == IslandSection.Media) {
             root.target-width = 380px;
@@ -72,7 +76,7 @@ export component UltimateDynamicIsland inherits Window {
             root.target-height = 275px;
         } else if (active-section == IslandSection.TodoManager) {
             root.target-width = 420px;
-            root.target-height = 335px;
+            root.target-height = 375px;
         } else if (active-section == IslandSection.CalendarView) {
             root.target-width = 380px;
             root.target-height = 375px;
@@ -88,13 +92,20 @@ export component UltimateDynamicIsland inherits Window {
     
     property <IslandSection> last-expanded-section: IslandSection.TodoManager;
     
+    changed target-width => {
+        root.window-size-changed(root.target-width, root.target-height);
+    }
+    changed target-height => {
+        root.window-size-changed(root.target-width, root.target-height);
+    }
+    
     property <length> animated-width: target-width;
     property <length> animated-height: target-height;
-    animate animated-width { duration: Theme.standard-duration; easing: Theme.standard-easing; }
-    animate animated-height { duration: Theme.standard-duration; easing: Theme.standard-easing; }
-    
+    animate animated-width { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+    animate animated-height { duration: Theme.spring-duration; easing: Theme.spring-easing; }
+
     width: 420px;
-    height: animated-height;
+    height: 385px;
     background: transparent;
     no-frame: true;
     
@@ -113,6 +124,54 @@ export component UltimateDynamicIsland inherits Window {
         running: root.is-playing;
         triggered => {
             root.art-rotation += 1deg;
+        }
+    }
+
+    // Dynamic Island Transient Volume/Brightness HUD
+    in-out property <bool> show-hud-peek: false;
+    in-out property <string> hud-peek-icon: "volume";
+    in-out property <float> hud-peek-value: 50.0;
+    property <float> prev-volume: 50.0;
+    property <float> prev-brightness: 50.0;
+    property <bool> is-initialized: false;
+
+    changed volume-level => {
+        if (root.is-initialized && root.active-section == IslandSection.Compact && Math.abs(root.volume-level - root.prev-volume) > 0.5) {
+            root.hud-peek-icon = "volume";
+            root.hud-peek-value = root.volume-level;
+            root.show-hud-peek = true;
+            hud_timer.running = false;
+            hud_timer.running = true;
+        }
+        root.prev-volume = root.volume-level;
+    }
+
+    changed brightness-level => {
+        if (root.is-initialized && root.active-section == IslandSection.Compact && Math.abs(root.brightness-level - root.prev-brightness) > 0.5) {
+            root.hud-peek-icon = "brightness";
+            root.hud-peek-value = root.brightness-level;
+            root.show-hud-peek = true;
+            hud_timer.running = false;
+            hud_timer.running = true;
+        }
+        root.prev-brightness = root.brightness-level;
+    }
+
+    hud_timer := Timer {
+        interval: 1400ms;
+        running: false;
+        triggered => {
+            root.show-hud-peek = false;
+            self.running = false;
+        }
+    }
+
+    init_timer := Timer {
+        interval: 1000ms;
+        running: true;
+        triggered => {
+            root.is-initialized = true;
+            self.running = false;
         }
     }
     
@@ -207,6 +266,7 @@ export component UltimateDynamicIsland inherits Window {
     callback clear-completed-tasks();
     callback change-month-offset(int);
     callback active-section-changed(IslandSection);
+    callback window-size-changed(length, length);
     
     pure function section_index(sec: IslandSection) -> int {
         if (sec == IslandSection.Compact) { return 0; }
@@ -229,8 +289,9 @@ export component UltimateDynamicIsland inherits Window {
 
     IslandPill {
         width: animated-width;
-        height: 100%;
+        height: animated-height;
         x: (parent.width - self.width) / 2;
+        y: 0px;
         background: root.is-playing && root.active-section == IslandSection.Compact ? transparent : Theme.glass-gradient;
         border-color: root.is-playing && root.active-section == IslandSection.Compact ? transparent : Theme.border-gradient;
         border-width: root.is-playing && root.active-section == IslandSection.Compact ? 0px : 1px;
@@ -259,6 +320,9 @@ export component UltimateDynamicIsland inherits Window {
         if root.active-section == IslandSection.Compact : CompactPanel {
             is-playing: root.is-playing;
             has-new-notification: root.has-new-notification;
+            show-hud-peek: root.show-hud-peek;
+            hud-peek-icon: root.hud-peek-icon;
+            hud-peek-value: root.hud-peek-value;
             hardware-stats: root.hardware-stats;
             current-date-string: root.current-date-string;
             current-time-string: root.current-time-string;

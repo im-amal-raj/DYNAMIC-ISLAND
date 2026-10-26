@@ -1,0 +1,74 @@
+// PURPOSE: Media track progress timeline and quick volume slider
+// INPUTS: media-state (MediaState), volume-level (float), set-volume callback
+// USED BY: src/ui/panels/media.slint
+
+import { Theme } from "../../theme.slint";
+import { MediaState } from "../../types.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+export component MediaProgress inherits VerticalBox {
+    in property <MediaState> media-state;
+    in-out property <float> volume-level: 0.0;
+    callback set-volume(float);
+
+    padding: 0px;
+    spacing: Theme.spacing-xs;
+
+    Rectangle {
+        height: 4px;
+        background: Theme.card-surface-active;
+        border-radius: 2px;
+
+        Rectangle {
+            x: 0px;
+            width: parent.width * root.media-state.track-progress;
+            height: 100%;
+            background: Theme.text-primary;
+            border-radius: 2px;
+        }
+    }
+
+    HorizontalBox {
+        padding: 0px;
+        alignment: space-between;
+        Text { text: root.media-state.track-position-str; font-size: 9px; color: Theme.text-tertiary; }
+
+        HorizontalLayout {
+            spacing: 6px;
+            alignment: center;
+            Image { 
+                width: 12px; height: 12px; 
+                source: @image-url("../../../../assets/icons/volume-2.svg"); 
+                colorize: Theme.text-secondary; 
+            }
+            Rectangle {
+                width: 60px; height: 6px;
+                y: (12px - self.height) / 2;
+                background: Theme.card-surface-active;
+                border-radius: 3px;
+                Rectangle {
+                    x: 0px; y: 0px; height: 100%; width: parent.width * (root.volume-level / 100.0);
+                    background: Theme.text-primary;
+                    border-radius: 3px;
+                }
+                TouchArea {
+                    width: 100%; height: 100%;
+                    moved => {
+                        let p = max(0.0, min(1.0, self.mouse-x / self.width));
+                        root.volume-level = p * 100.0;
+                        root.set-volume(p * 100.0);
+                    }
+                    pointer-event(event) => {
+                        if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                            let p = max(0.0, min(1.0, self.mouse-x / self.width));
+                            root.volume-level = p * 100.0;
+                            root.set-volume(p * 100.0);
+                        }
+                    }
+                }
+            }
+        }
+
+        Text { text: root.media-state.track-duration-str; font-size: 9px; color: Theme.text-tertiary; }
+    }
+}

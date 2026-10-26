@@ -1,29 +1,34 @@
+// PURPOSE: Fluid custom range slider with leading icon and gradient fill
+// INPUTS: icon-source (image), value (float), active-gradient (brush), changed callback
+// USED BY: audio_tab.slint, display_tab.slint
+
 import { Theme } from "../theme.slint";
 import { HorizontalBox } from "std-widgets.slint";
 
 export component SliderControl inherits Rectangle {
     in property <image> icon-source;
-    in property <color> icon-color: Theme.text-primary;
+    in property <color> icon-color: (root.value > 15.0) ? rgba(0, 0, 0, 0.75) : Theme.text-primary;
     in property <float> minimum: 0.0;
     in property <float> maximum: 100.0;
     in-out property <float> value: 50.0;
-    in property <brush> active-gradient: Theme.glass-gradient;
+    in property <brush> active-gradient: @linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.98) 100%);
     
     callback changed(float);
 
-    height: 36px;
-    border-radius: Theme.card-radius-small;
-    background: Theme.card-surface;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
     border-width: 1px;
-    border-color: Theme.border-color;
+    border-color: rgba(255, 255, 255, 0.12);
     clip: true;
 
     // Fill background
     Rectangle {
         x: 0; y: 0;
         height: parent.height;
-        width: parent.width * ((root.value - root.minimum) / (root.maximum - root.minimum));
+        width: parent.width * max(0.0, min(1.0, (root.value - root.minimum) / (root.maximum - root.minimum)));
         background: root.active-gradient;
+        border-radius: 12px;
     }
 
     // Interactive area

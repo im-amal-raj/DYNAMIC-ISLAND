@@ -1,3 +1,7 @@
+// PURPOSE: 32px accessible interactive icon button with hover and active states
+// INPUTS: icon-light (image), icon-fill (image), is-active (bool), active-color (color)
+// USED BY: dock.slint, task_item.slint, search_field.slint
+
 import { Theme } from "../theme.slint";
 
 export component IconButton inherits TouchArea {
@@ -9,13 +13,16 @@ export component IconButton inherits TouchArea {
     width: Theme.touch-target-min;
     height: Theme.touch-target-min;
 
+    property <float> current-scale: root.pressed ? 0.88 : (root.has-hover ? 1.08 : 1.0);
+    animate current-scale { duration: Theme.micro-duration; easing: Theme.spring-easing; }
+
     // Outer container for visual layout
     Rectangle {
         width: 100%; height: 100%;
         
         Image {
-            width: Theme.icon-size-lg;
-            height: Theme.icon-size-lg;
+            width: Theme.icon-size-lg * root.current-scale;
+            height: Theme.icon-size-lg * root.current-scale;
             source: root.icon-light;
             opacity: root.is-active ? 0.0 : (root.has-hover ? 1.0 : 0.5);
             colorize: root.has-hover ? Theme.text-primary : Theme.text-secondary;
@@ -26,8 +33,8 @@ export component IconButton inherits TouchArea {
         }
 
         Image {
-            width: Theme.icon-size-lg;
-            height: Theme.icon-size-lg;
+            width: Theme.icon-size-lg * root.current-scale;
+            height: Theme.icon-size-lg * root.current-scale;
             source: root.icon-fill;
             opacity: root.is-active ? 1.0 : 0.0;
             colorize: root.active-color;

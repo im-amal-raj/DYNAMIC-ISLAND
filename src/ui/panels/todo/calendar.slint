@@ -1,3 +1,7 @@
+// PURPOSE: Monthly calendar grid with date filtering and task indicators
+// INPUTS: calendar-grid ([CalendarDay]), selected-date-filter (string)
+// USED BY: src/island.slint, todo_panel.slint
+
 import { Theme } from "../../theme.slint";
 import { CalendarDay, IslandSection } from "../../types.slint";
 import { HorizontalBox, VerticalBox } from "std-widgets.slint";
@@ -90,7 +94,7 @@ export component CalendarView inherits Rectangle {
                             
                             Text {
                                 text: day.text;
-                                color: day.text == "" ? transparent : (root.selected-date-filter == day.text ? #000000 : Theme.text-primary);
+                                color: day.text == "" ? transparent : (root.selected-date-filter == day.text ? Theme.surface-primary : Theme.text-primary);
                                 font-size: 13px;
                                 font-weight: root.selected-date-filter == day.text ? 700 : 500;
                                 horizontal-alignment: center;
@@ -101,7 +105,7 @@ export component CalendarView inherits Rectangle {
                                 Rectangle {
                                     width: 4px; height: 4px;
                                     border-radius: 2px;
-                                    background: root.selected-date-filter == day.text ? #000000 : Theme.color-orange;
+                                    background: root.selected-date-filter == day.text ? Theme.surface-primary : Theme.color-orange;
                                 }
                             }
                         }

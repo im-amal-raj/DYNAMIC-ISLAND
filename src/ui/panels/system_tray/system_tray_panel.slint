@@ -1,3 +1,7 @@
+// PURPOSE: System tray applet grid and session power management panel
+// INPUTS: system-tray-apps ([AppItem]), activate-tray/trigger-power callbacks
+// USED BY: src/island.slint
+
 import { Theme } from "../../theme.slint";
 import { AppItem, IslandSection } from "../../types.slint";
 import { SectionHeader } from "../../components/section_header.slint";
@@ -9,7 +13,6 @@ export component SystemTrayPanel inherits Rectangle {
     in property <[AppItem]> system-tray-apps;
     in-out property <string> pending-power-action: "";
     in-out property <bool> show-power-confirm: false;
-
     callback power-action(string);
     callback activate-tray-item(string);
 

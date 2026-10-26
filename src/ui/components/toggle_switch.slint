@@ -1,3 +1,7 @@
+// PURPOSE: iOS-style spring toggle switch
+// INPUTS: checked (bool), toggled callback
+// USED BY: wifi_tab.slint, bluetooth_tab.slint, todo_panel.slint
+
 import { Theme } from "../theme.slint";
 
 // PURPOSE: Apple-style toggle switch for boolean settings
@@ -18,8 +22,10 @@ export component ToggleSwitch inherits TouchArea {
     Rectangle {
         width: 100%; height: 100%;
         border-radius: 12px;
-        background: root.checked ? Theme.color-green : rgba(255, 255, 255, 0.15);
-        animate background { duration: Theme.micro-duration; }
+        background: root.checked ? Theme.color-blue : rgba(255, 255, 255, 0.12);
+        border-width: 1px;
+        border-color: root.checked ? rgba(10, 132, 255, 0.35) : Theme.border-color;
+        animate background, border-color { duration: Theme.micro-duration; }
         
         Rectangle {
             width: 20px; height: 20px;

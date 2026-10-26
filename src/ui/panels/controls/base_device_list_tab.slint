@@ -1,3 +1,7 @@
+// PURPOSE: Reusable generic connectivity device list layout with enable toggle
+// INPUTS: enabled (bool), title (string), scanning (bool)
+// USED BY: wifi_tab.slint, bluetooth_tab.slint
+
 import { Theme } from "../../theme.slint";
 import { HorizontalBox, VerticalBox, ScrollView } from "std-widgets.slint";
 import { SectionHeader } from "../../components/section_header.slint";
@@ -19,12 +23,12 @@ export component BaseDeviceListTab inherits Rectangle {
     
     VerticalBox {
         width: 100%; height: 100%;
-        padding: Theme.panel-padding;
+        padding: 0px;
         spacing: Theme.spacing-md;
         
         SectionHeader {
             title: root.title;
-            title-color: Theme.color-blue;
+            title-color: Theme.text-secondary;
             
             HorizontalBox {
                 padding: 0px; spacing: Theme.spacing-sm; alignment: end;

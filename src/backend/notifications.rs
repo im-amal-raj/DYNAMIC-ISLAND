@@ -43,6 +43,8 @@ impl NotificationServer {
         let summary = summary.to_string();
         let body = body.to_string();
         
+        crate::backend::log_to_file(&format!("NOTIF RECEIVED from {}: summary='{}', body='{}'", app_name, summary, body));
+        
         let current_notif_id = NOTIF_COUNTER.fetch_add(1, Ordering::SeqCst);
         
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;

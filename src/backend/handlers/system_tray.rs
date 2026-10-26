@@ -64,12 +64,9 @@ pub fn setup(
         }
     });
     
-    // 4. Focus main OS window (Wayland/Niri target)
+    // 4. Focus main OS window (Wayland/Umbriel/Niri target)
     ui.on_request_window_focus(move || {
-        let _ = std::process::Command::new("sh")
-            .arg("-c")
-            .arg("niri msg action focus-window --id $(niri msg --json windows | jq '.[] | select(.title==\"dynamic-island\") | .id' | head -n 1)")
-            .spawn();
+        crate::backend::umbriel::focus_island_window();
     });
     
     // 5. Clear notification history

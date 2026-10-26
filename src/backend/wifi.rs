@@ -18,13 +18,17 @@ pub fn setup(
     let notify_clone = notify.clone();
     
     tokio::spawn(async move {
+        let mut is_first_run = true;
         loop {
             let section_u8 = active_section_clone.load(Ordering::SeqCst);
             // 4 is SysControls
             let is_controls = section_u8 == 4;
             
-            if is_controls {
-                let wifi_out = std::process::Command::new("nmcli").arg("-t").arg("-f").arg("SSID,SIGNAL,ACTIVE").arg("dev").arg("wifi").output();
+            if is_controls || is_first_run {
+                is_first_run = false;
+                let wifi_out = std::process::Command::new("nmcli")
+                    .args(&["--rescan", "no", "-t", "-f", "SSID,SIGNAL,ACTIVE", "dev", "wifi"])
+                    .output();
                 let mut networks = Vec::new();
                 if let Ok(out) = wifi_out {
                     let lines = String::from_utf8_lossy(&out.stdout);
@@ -106,7 +110,7 @@ pub fn setup(
                 });
                 
                 tokio::select! {
-                    _ = tokio::time::sleep(Duration::from_secs(3)) => {}
+                    _ = tokio::time::sleep(Duration::from_millis(1500)) => {}
                     _ = notify_clone.notified() => {}
                 }
             } else {
