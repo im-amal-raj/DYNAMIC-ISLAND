@@ -51,7 +51,7 @@ export component ListItem inherits Rectangle {
             }
             
             VerticalLayout {
-                spacing: 2px;
+                spacing: Theme.spacing-xs;
                 alignment: center;
                 Text { text: root.title; color: Theme.text-primary; font-size: 13px; font-weight: 700; overflow: elide; }
                 if root.subtitle != "" : Text { text: root.subtitle; color: Theme.text-secondary; font-size: 11px; overflow: elide; }

@@ -54,7 +54,7 @@ export component TaskItemRow inherits Rectangle {
         x: Theme.spacing-md + 12px + 32px + Theme.spacing-xs;
         width: parent.width - self.x - 40px; // Leave room for delete button
         alignment: center;
-        spacing: 2px;
+        spacing: Theme.spacing-xs;
         
         Text {
             text: root.task.title;

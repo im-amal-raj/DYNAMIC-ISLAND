@@ -46,4 +46,5 @@ void set_wayland_input_region(void *display_ptr, void *surface_ptr, int32_t x, i
     wl_surface_set_input_region(surface, region);
     wl_surface_commit(surface);
     wl_region_destroy(region);
+    wl_display_flush(display);
 }

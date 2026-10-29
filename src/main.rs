@@ -93,14 +93,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let handle = ui.window().window_handle();
                 if let (Ok(wh), Ok(dh)) = (handle.window_handle(), handle.display_handle()) {
                     if let (RawWindowHandle::Wayland(w), RawDisplayHandle::Wayland(d)) = (wh.as_raw(), dh.as_raw()) {
-                        let sec = ui.get_active_section();
-                        if sec == IslandSection::Compact {
-                            let w_val = ui.get_target_width() as i32;
-                            let x = ((420 - w_val) / 2).max(0);
-                            crate::backend::wayland_input::update_input_region(d.display.as_ptr(), w.surface.as_ptr(), x, 0, w_val, 42);
-                        } else {
-                            crate::backend::wayland_input::update_input_region(d.display.as_ptr(), w.surface.as_ptr(), 0, 0, 420, 385);
-                        }
+                        let w_val = (ui.get_target_width() as i32).clamp(1, 420);
+                        let h_val = (ui.get_target_height() as i32).clamp(1, 385);
+                        let x = ((420 - w_val) / 2).max(0);
+                        crate::backend::wayland_input::update_input_region(d.display.as_ptr(), w.surface.as_ptr(), x, 0, w_val, h_val);
                     }
                 }
             }
@@ -112,6 +108,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let update_clone_init = update_input_bounds.clone();
         let _ = slint::invoke_from_event_loop(move || {
             update_clone_init();
+        });
+
+        // Secondary and tertiary syncs after Wayland surface attachment
+        let update_clone_delay = update_input_bounds.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+            let update_clone = update_clone_delay.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                update_clone();
+            });
+            tokio::time::sleep(tokio::time::Duration::from_millis(350)).await;
+            let _ = slint::invoke_from_event_loop(move || {
+                update_clone_delay();
+            });
         });
     }
 

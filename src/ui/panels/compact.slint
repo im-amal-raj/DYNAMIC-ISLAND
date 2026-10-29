@@ -85,7 +85,7 @@ export component CompactPanel inherits HorizontalLayout {
                 
                 // Sleek Hardware Gauge
                 HorizontalBox {
-                    spacing: 6px;
+                    spacing: Theme.spacing-xs;
                     alignment: center;
                     padding: 0px;
 
@@ -119,7 +119,7 @@ export component CompactPanel inherits HorizontalLayout {
 
                 // Clock / Stats Text (Transitions on hover)
                 if !cpu_ta.has-hover : HorizontalBox {
-                    spacing: 6px;
+                    spacing: Theme.spacing-xs;
                     alignment: center;
                     padding: 0px;
                     
@@ -147,7 +147,7 @@ export component CompactPanel inherits HorizontalLayout {
             }
             
             if !root.show-hud-peek && root.has-new-notification : HorizontalBox {
-                spacing: 6px;
+                spacing: Theme.spacing-xs;
                 alignment: center;
                 Image {
                     width: 16px; height: 16px;
